@@ -21,8 +21,10 @@ NetworkManager::get()
   }
   return *s_instance;
 }
+
 void
-NetworkManager::add_listener(std::string const& connection_name, std::function<void(ipm::Receiver::Response)> callback)
+NetworkManager::start_listening(std::string const& connection_name,
+                                std::function<void(ipm::Receiver::Response)> callback)
 {
   if (!m_connection_map.count(connection_name)) {
     throw ConnectionNotFound(ERS_HERE, connection_name);
@@ -32,24 +34,24 @@ NetworkManager::add_listener(std::string const& connection_name, std::function<v
     throw ConnectionTypeMismatch(ERS_HERE, connection_name, "Subscriber", "add_subscriber");
   }
 
-  if (has_listener(connection_name)) {
+  if (is_listening(connection_name)) {
     throw ListenerAlreadyRegistered(ERS_HERE, connection_name);
   }
 
   if (!m_registered_listeners.count(connection_name)) {
-    m_registered_listeners[connection_name] = std::move(Listener(connection_name, false));
+    m_registered_listeners[connection_name] = std::move(Listener(connection_name));
   }
-  m_registered_listeners[connection_name].add_callback(callback);
+  m_registered_listeners[connection_name].start_listening(callback);
 }
 
 void
-NetworkManager::remove_listener(std::string const& connection_name)
+NetworkManager::stop_listening(std::string const& connection_name)
 {
-  if (!has_listener(connection_name)) {
+  if (!is_listening(connection_name)) {
     throw ListenerNotRegistered(ERS_HERE, connection_name);
   }
 
-  m_registered_listeners[connection_name].remove_callback();
+  m_registered_listeners[connection_name].stop_listening();
 }
 
 void
@@ -76,10 +78,10 @@ NetworkManager::add_subscriber(std::string const& connection_name,
   auto subscriber = std::dynamic_pointer_cast<ipm::Subscriber>(m_receiver_plugins[connection_name]);
   subscriber->subscribe(topic);
 
-  if (!m_registered_listeners.count(connection_name)) {
-    m_registered_listeners[connection_name] = std::move(Listener(connection_name, true));
+  if (!m_registered_subscribers.count(connection_name)) {
+    m_registered_subscribers[connection_name] = std::move(Subscriber(connection_name));
   }
-  m_registered_listeners[connection_name].add_callback(callback, topic);
+  m_registered_subscribers[connection_name].add_callback(callback, topic);
 }
 
 void
@@ -91,7 +93,7 @@ NetworkManager::remove_subscriber(std::string const& connection_name, std::strin
 
   auto subscriber = std::dynamic_pointer_cast<ipm::Subscriber>(m_receiver_plugins[connection_name]);
   subscriber->unsubscribe(topic);
-  m_registered_listeners[connection_name].remove_callback(topic);
+  m_registered_subscribers[connection_name].remove_callback(topic);
 }
 
 void
@@ -112,6 +114,9 @@ NetworkManager::reset()
   for (auto& listener_pair : m_registered_listeners) {
     listener_pair.second.shutdown();
   }
+  for (auto& subscriber_pair : m_registered_subscribers) {
+    subscriber_pair.second.shutdown();
+  }
   m_registered_listeners.clear();
   m_sender_plugins.clear();
   m_receiver_plugins.clear();
@@ -128,27 +133,35 @@ NetworkManager::get_connection_string(std::string const& connection_name) const
 }
 
 bool
-NetworkManager::has_listener(std::string const& connection_name) const
+NetworkManager::is_connection_open(std::string const& connection_name,
+                                   NetworkManager::ConnectionDirection direction) const
+{
+  switch (direction) {
+    case ConnectionDirection::Recv:
+      return m_receiver_plugins.count(connection_name);
+    case ConnectionDirection::Send:
+      return m_sender_plugins.count(connection_name);
+  }
+
+  return false;
+}
+
+bool
+NetworkManager::is_listening(std::string const& connection_name) const
 {
   if (!m_registered_listeners.count(connection_name))
     return false;
 
-  if (m_registered_listeners.at(connection_name).is_subscriber())
-    return false;
-
-  return m_registered_listeners.at(connection_name).has_callback();
+  return m_registered_listeners.at(connection_name).is_listening();
 }
 
 bool
 NetworkManager::has_subscriber(std::string const& connection_name, std::string const& topic) const
 {
-  if (!m_registered_listeners.count(connection_name))
+  if (!m_registered_subscribers.count(connection_name))
     return false;
 
-  if (!m_registered_listeners.at(connection_name).is_subscriber())
-    return false;
-
-  return m_registered_listeners.at(connection_name).has_callback(topic);
+  return m_registered_subscribers.at(connection_name).has_callback(topic);
 }
 
 ipm::Receiver::Response

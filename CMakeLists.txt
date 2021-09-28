@@ -24,11 +24,12 @@ daq_codegen(
 ##############################################################################
 # Main library
 
-daq_add_library(NetworkManager.cpp Listener.cpp LINK_LIBRARIES ipm::ipm toolbox::toolbox logging::logging)
+daq_add_library(NetworkManager.cpp Listener.cpp Subscriber.cpp LINK_LIBRARIES ipm::ipm toolbox::toolbox logging::logging)
 
 ##############################################################################
 # Unit tests
 daq_add_unit_test(Listener_test LINK_LIBRARIES networkmanager)
+daq_add_unit_test(NM_Subscriber_test LINK_LIBRARIES networkmanager)
 daq_add_unit_test(NetworkManager_test LINK_LIBRARIES networkmanager)
 
 daq_install()

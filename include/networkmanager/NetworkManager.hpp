@@ -10,9 +10,10 @@
 #ifndef NETWORKMANAGER_INCLUDE_NETWORKMANAGER_NETWORKMANAGER_HPP_
 #define NETWORKMANAGER_INCLUDE_NETWORKMANAGER_NETWORKMANAGER_HPP_
 
-#include "networkmanager/Listener.hpp"
-#include "networkmanager/networkmanager/Structs.hpp"
 #include "networkmanager/Issues.hpp"
+#include "networkmanager/Listener.hpp"
+#include "networkmanager/Subscriber.hpp"
+#include "networkmanager/networkmanager/Structs.hpp"
 
 #include "ipm/Receiver.hpp"
 #include "ipm/Sender.hpp"
@@ -33,11 +34,18 @@ class NetworkManager
 {
 
 public:
+  enum class ConnectionDirection
+  {
+    Send,
+    Recv
+  };
+
   static NetworkManager& get();
 
   // Receive via callback
-  void add_listener(std::string const& connection_name, std::function<void(ipm::Receiver::Response)> callback);
-  void remove_listener(std::string const& connection_name);
+  void start_listening(std::string const& connection_name, std::function<void(ipm::Receiver::Response)> callback);
+  void stop_listening(std::string const& connection_name);
+
   void add_subscriber(std::string const& connection_name,
                       std::string const& topic,
                       std::function<void(ipm::Receiver::Response)> callback);
@@ -58,7 +66,8 @@ public:
 
   std::string get_connection_string(std::string const& connection_name) const;
 
-  bool has_listener(std::string const& connection_name) const;
+  bool is_connection_open(std::string const& connection_name, ConnectionDirection direction = ConnectionDirection::Recv) const;
+  bool is_listening(std::string const& connection_name) const;
   bool has_subscriber(std::string const& connection_name, std::string const& topic) const;
 
 private:
@@ -78,6 +87,7 @@ private:
   std::unordered_map<std::string, std::shared_ptr<ipm::Receiver>> m_receiver_plugins;
   std::unordered_map<std::string, std::shared_ptr<ipm::Sender>> m_sender_plugins;
   std::unordered_map<std::string, Listener> m_registered_listeners;
+  std::unordered_map<std::string, Subscriber> m_registered_subscribers;
 };
 } // namespace networkmanager
 } // namespace dunedaq

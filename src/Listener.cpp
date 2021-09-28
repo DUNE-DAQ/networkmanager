@@ -2,9 +2,8 @@
 #include "networkmanager/NetworkManager.hpp"
 
 namespace dunedaq::networkmanager {
-Listener::Listener(std::string const& connection_name, bool is_subscriber)
+Listener::Listener(std::string const& connection_name)
   : m_connection_name(connection_name)
-  , m_is_subscriber(is_subscriber)
 {}
 
 Listener::~Listener() noexcept
@@ -14,59 +13,41 @@ Listener::~Listener() noexcept
 
 Listener::Listener(Listener&& other)
   : m_connection_name(other.m_connection_name)
-  , m_is_subscriber(other.m_is_subscriber)
-  , m_callbacks(std::move(other.m_callbacks))
+  , m_callback(std::move(other.m_callback))
   , m_listener_thread(std::move(other.m_listener_thread))
   , m_is_listening(other.m_is_listening.load())
-  , m_callbacks_updated(true)
 {}
 
 Listener&
 Listener::operator=(Listener&& other)
 {
   m_connection_name = other.m_connection_name;
-  m_is_subscriber = other.m_is_subscriber;
-  m_callbacks = std::move(other.m_callbacks);
+  m_callback = std::move(other.m_callback);
   m_listener_thread = std::move(other.m_listener_thread);
   m_is_listening = other.m_is_listening.load();
-  m_callbacks_updated = true;
   return *this;
 }
 
 void
-Listener::add_callback(std::function<void(ipm::Receiver::Response)> callback, std::string const& topic)
+Listener::start_listening(std::function<void(ipm::Receiver::Response)> callback)
 {
-  if (!m_is_subscriber && topic != "") {
-    throw SubscriptionsNotSupported(ERS_HERE, m_connection_name, topic);
-  }
-  if (has_callback(topic)) {
-    throw CallbackAlreadyRegistered(ERS_HERE, m_connection_name, topic);
+  if (m_callback != nullptr) {
+    throw ListenerAlreadyRegistered(ERS_HERE, m_connection_name);
   }
 
-  m_callbacks[topic] = callback;
+  m_callback = callback;
   if (!is_listening())
     startup();
 }
 
 void
-Listener::remove_callback(std::string const& topic)
+Listener::stop_listening()
 {
-  if (!m_is_subscriber && topic != "") {
-    throw SubscriptionsNotSupported(ERS_HERE, m_connection_name, topic);
-  }
-  if (!has_callback(topic)) {
-    throw CallbackNotRegistered(ERS_HERE, m_connection_name, topic);
+  if (m_callback == nullptr) {
+    throw ListenerNotRegistered(ERS_HERE, m_connection_name);
   }
 
-  m_callbacks.erase(topic);
-  if (m_callbacks.empty())
-    shutdown();
-}
-
-bool
-Listener::has_callback(std::string const& topic) const
-{
-  return m_callbacks.count(topic);
+  shutdown();
 }
 
 void
@@ -82,7 +63,7 @@ Listener::shutdown()
   m_is_listening = false;
   if (m_listener_thread && m_listener_thread->joinable())
     m_listener_thread->join();
-  m_callbacks.clear();
+  m_callback = nullptr;
 }
 
 void
@@ -92,11 +73,8 @@ Listener::listener_thread_loop()
     try {
       auto response = NetworkManager::get().receive_from(m_connection_name, ipm::Receiver::s_no_block);
 
-      if (m_is_subscriber && m_callbacks.count(response.metadata)) {
-        m_callbacks[response.metadata](response);
-      }
-      if (m_callbacks.count("")) {
-        m_callbacks[""](response);
+      if (m_callback != nullptr) {
+        m_callback(response);
       }
     } catch (ipm::ReceiveTimeoutExpired const& tmo) {
       usleep(1000);

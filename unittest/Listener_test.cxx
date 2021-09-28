@@ -21,17 +21,20 @@ using namespace dunedaq::networkmanager;
 
 BOOST_AUTO_TEST_SUITE(Listener_test)
 
-void
-configure_network_manager(networkmanager::Type manager_type)
+struct NetworkManagerTestFixture
 {
-  networkmanager::Conf testConfig;
-  networkmanager::Connection testConn;
-  testConn.name = "foo";
-  testConn.address = "inproc://bar";
-  testConn.type = manager_type;
-  testConfig.connections.push_back(testConn);
-  NetworkManager::get().configure(testConfig);
-}
+  NetworkManagerTestFixture()
+  {
+    networkmanager::Conf testConfig;
+    networkmanager::Connection testConn;
+    testConn.name = "foo";
+    testConn.address = "inproc://bar";
+    testConn.type = networkmanager::Type::Receiver;
+    testConfig.connections.push_back(testConn);
+    NetworkManager::get().configure(testConfig);
+  }
+  ~NetworkManagerTestFixture() { NetworkManager::get().reset(); }
+};
 
 BOOST_AUTO_TEST_CASE(CopyAndMoveSemantics)
 {
@@ -41,42 +44,73 @@ BOOST_AUTO_TEST_CASE(CopyAndMoveSemantics)
   BOOST_REQUIRE(std::is_move_assignable_v<Listener>);
 }
 
-BOOST_AUTO_TEST_CASE(InitialConditions)
+BOOST_FIXTURE_TEST_CASE(InitialConditions, NetworkManagerTestFixture)
 {
-  configure_network_manager(networkmanager::Type::Receiver);
+  Listener l("foo");
 
-  Listener l("foo", false);
-
-  BOOST_REQUIRE_EQUAL(l.is_subscriber(), false);
   BOOST_REQUIRE_EQUAL(l.is_listening(), false);
 
   auto ll = std::move(l);
 
-  BOOST_REQUIRE_EQUAL(ll.is_subscriber(), false);
   BOOST_REQUIRE_EQUAL(ll.is_listening(), false);
 
   auto lll(std::move(ll));
 
-  BOOST_REQUIRE_EQUAL(lll.is_subscriber(), false);
   BOOST_REQUIRE_EQUAL(lll.is_listening(), false);
+}
 
-  NetworkManager::get().reset();
+BOOST_FIXTURE_TEST_CASE(StartStop, NetworkManagerTestFixture)
+{
+  Listener l("foo");
 
-  configure_network_manager(networkmanager::Type::Subscriber);
+  l.start_listening([&](dunedaq::ipm::Receiver::Response) {});
 
-  Listener llll("foo", true);
+  BOOST_REQUIRE_EXCEPTION(l.start_listening([&](dunedaq::ipm::Receiver::Response) {}),
+                          ListenerAlreadyRegistered,
+                          [&](ListenerAlreadyRegistered const&) { return true; });
 
-  BOOST_REQUIRE_EQUAL(llll.is_subscriber(), true);
-  BOOST_REQUIRE_EQUAL(llll.is_listening(), false);
+  BOOST_REQUIRE(l.is_listening());
 
-  auto l5 = new Listener("foo", true);
+  l.stop_listening();
+  BOOST_REQUIRE(!l.is_listening());
+  BOOST_REQUIRE_EXCEPTION(
+    l.stop_listening(), ListenerNotRegistered, [&](ListenerNotRegistered const&) { return true; });
+}
 
-  BOOST_REQUIRE_EQUAL(l5->is_subscriber(), true);
-  BOOST_REQUIRE_EQUAL(l5->is_listening(), false);
+BOOST_FIXTURE_TEST_CASE(Shutdown, NetworkManagerTestFixture) {
 
-  delete l5;
+  Listener l("foo");
 
-  NetworkManager::get().reset();
+  l.start_listening([&](dunedaq::ipm::Receiver::Response) {});
+
+  BOOST_REQUIRE(l.is_listening());
+
+  l.shutdown();
+  BOOST_REQUIRE(!l.is_listening());
+  BOOST_REQUIRE_EXCEPTION(
+    l.stop_listening(), ListenerNotRegistered, [&](ListenerNotRegistered const&) { return true; });
+}
+
+BOOST_FIXTURE_TEST_CASE(Callback, NetworkManagerTestFixture) {
+  std::string sent_string;
+  std::string received_string;
+
+  std::function<void(dunedaq::ipm::Receiver::Response)> callback = [&](dunedaq::ipm::Receiver::Response response) {
+    received_string = std::string(response.data.begin(), response.data.end());
+  };
+
+  Listener l("foo");
+  l.start_listening(callback);
+
+  received_string = "";
+  sent_string = "this is the first test string";
+  NetworkManager::get().send_to("foo", sent_string.c_str(), sent_string.size(), dunedaq::ipm::Sender::s_block);
+
+  while (received_string == "") {
+    usleep(1000);
+  }
+
+  BOOST_REQUIRE_EQUAL(received_string, sent_string);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

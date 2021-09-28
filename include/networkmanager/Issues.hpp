@@ -17,6 +17,14 @@ namespace dunedaq {
 	
 // Disable coverage collection LCOV_EXCL_START
 ERS_DECLARE_ISSUE(networkmanager, ConnectionNotFound, "Connection named " << name << " not found!", ((std::string)name))
+ERS_DECLARE_ISSUE(networkmanager,
+                  ConnectionAlreadyOpen,
+                  "Connection named " << name << " has already been opened for " << direction << "!",
+                  ((std::string)name)((std::string)direction))
+ERS_DECLARE_ISSUE(networkmanager,
+                  ConnectionNotOpen,
+                  "Connection named " << name << " is not open for " << direction << "!",
+                  ((std::string)name)((std::string)direction))
 ERS_DECLARE_ISSUE(networkmanager, NetworkManagerAlreadyConfigured, "The NetworkManager has already been configured!", )
 ERS_DECLARE_ISSUE(networkmanager,
                   ListenerAlreadyRegistered,
@@ -48,10 +56,6 @@ ERS_DECLARE_ISSUE(networkmanager,
 ERS_DECLARE_ISSUE(networkmanager,
                   CallbackNotRegistered,
                   "No callback has been registered with connection_name " << connection_name << ", topic " << topic,
-                  ((std::string)connection_name)((std::string)topic))
-ERS_DECLARE_ISSUE(networkmanager,
-                  SubscriptionsNotSupported,
-                  "Subscriptions are not supported on connection_name " << connection_name << "(topic " << topic << ")",
                   ((std::string)connection_name)((std::string)topic))
 // Reenable coverage collection LCOV_EXCL_STOP
 } // namespace dunedaq

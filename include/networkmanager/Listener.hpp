@@ -30,7 +30,7 @@ class Listener
 {
 public:
   Listener() = default; // So that Listener can be used with operator[] in a map
-  explicit Listener(std::string const& connection_name, bool is_subscriber);
+  explicit Listener(std::string const& connection_name);
 
   virtual ~Listener() noexcept;
   Listener(Listener&&);
@@ -39,26 +39,20 @@ public:
   Listener(Listener const&) = delete;
   Listener& operator=(Listener const&) = delete;
 
-  void add_callback(std::function<void(ipm::Receiver::Response)> callback, std::string const& topic = "");
-  void remove_callback(std::string const& topic = "");
-  bool has_callback(std::string const& topic = "") const;
-  size_t num_callbacks() const { return m_callbacks.size(); }
+  void start_listening(std::function<void(ipm::Receiver::Response)> callback);
+  void stop_listening();
+  void shutdown();
 
   bool is_listening() const { return m_is_listening.load(); }
-  bool is_subscriber() const { return m_is_subscriber; }
-
-  void shutdown();
 
 private:
   void startup();
   void listener_thread_loop();
 
   std::string m_connection_name = "";
-  bool m_is_subscriber{ false };
-  std::unordered_map<std::string, std::function<void(ipm::Receiver::Response)>> m_callbacks;
+  std::function<void(ipm::Receiver::Response)> m_callback;
   std::unique_ptr<std::thread> m_listener_thread{ nullptr };
   std::atomic<bool> m_is_listening{ false };
-  std::atomic<bool> m_callbacks_updated{ true };
 };
 } // namespace networkmanager
 } // namespace dunedaq

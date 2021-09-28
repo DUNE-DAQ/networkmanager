@@ -94,31 +94,34 @@ BOOST_FIXTURE_TEST_CASE(FakeConfigure, NetworkManagerReceiverTestFixture)
 
 BOOST_FIXTURE_TEST_CASE(Listener, NetworkManagerReceiverTestFixture)
 {
-  BOOST_REQUIRE(!NetworkManager::get().has_listener("foo"));
-  NetworkManager::get().add_listener("foo", [&](dunedaq::ipm::Receiver::Response) { return; });
-  BOOST_REQUIRE(NetworkManager::get().has_listener("foo"));
+  BOOST_REQUIRE(!NetworkManager::get().is_listening("foo"));
+  NetworkManager::get().start_listening("foo", [&](dunedaq::ipm::Receiver::Response) { return; });
+  BOOST_REQUIRE(NetworkManager::get().is_listening("foo"));
 
   BOOST_REQUIRE(!NetworkManager::get().has_subscriber("foo", ""));
 
-  BOOST_REQUIRE_EXCEPTION(NetworkManager::get().add_listener("foo", [&](dunedaq::ipm::Receiver::Response) { return; }),
-                          ListenerAlreadyRegistered,
-                          [&](ListenerAlreadyRegistered const&) { return true; });
+  BOOST_REQUIRE_EXCEPTION(
+    NetworkManager::get().start_listening("foo", [&](dunedaq::ipm::Receiver::Response) { return; }),
+    ListenerAlreadyRegistered,
+    [&](ListenerAlreadyRegistered const&) { return true; });
 
-  NetworkManager::get().remove_listener("foo");
+  NetworkManager::get().stop_listening("foo");
 
-  BOOST_REQUIRE(!NetworkManager::get().has_listener("bar"));
-  BOOST_REQUIRE_EXCEPTION(NetworkManager::get().add_listener("bar", [&](dunedaq::ipm::Receiver::Response) { return; }),
-                          ConnectionNotFound,
-                          [&](ConnectionNotFound const&) { return true; });
-  BOOST_REQUIRE(!NetworkManager::get().has_listener("bar"));
+  BOOST_REQUIRE(!NetworkManager::get().is_listening("bar"));
+  BOOST_REQUIRE_EXCEPTION(
+    NetworkManager::get().start_listening("bar", [&](dunedaq::ipm::Receiver::Response) { return; }),
+    ConnectionNotFound,
+    [&](ConnectionNotFound const&) { return true; });
+  BOOST_REQUIRE(!NetworkManager::get().is_listening("bar"));
 
-  BOOST_REQUIRE_EXCEPTION(NetworkManager::get().remove_listener("foo"),
+  BOOST_REQUIRE_EXCEPTION(NetworkManager::get().stop_listening("foo"),
                           ListenerNotRegistered,
                           [&](ListenerNotRegistered const&) { return true; });
 
-  BOOST_REQUIRE_EXCEPTION(NetworkManager::get().add_subscriber("foo", "bar", [&](dunedaq::ipm::Receiver::Response) { return; }),
-                          ConnectionTypeMismatch,
-                          [&](ConnectionTypeMismatch const&) { return true; });
+  BOOST_REQUIRE_EXCEPTION(
+    NetworkManager::get().add_subscriber("foo", "bar", [&](dunedaq::ipm::Receiver::Response) { return; }),
+    ConnectionTypeMismatch,
+    [&](ConnectionTypeMismatch const&) { return true; });
 }
 
 BOOST_FIXTURE_TEST_CASE(Subscriber, NetworkManagerSubscriberTestFixture)
@@ -127,11 +130,12 @@ BOOST_FIXTURE_TEST_CASE(Subscriber, NetworkManagerSubscriberTestFixture)
   NetworkManager::get().add_subscriber("foo", "baz", [&](dunedaq::ipm::Receiver::Response) { return; });
   BOOST_REQUIRE(NetworkManager::get().has_subscriber("foo", "baz"));
 
-  BOOST_REQUIRE(!NetworkManager::get().has_listener("foo"));
+  BOOST_REQUIRE(!NetworkManager::get().is_listening("foo"));
 
-  BOOST_REQUIRE_EXCEPTION(NetworkManager::get().add_subscriber("foo", "baz", [&](dunedaq::ipm::Receiver::Response) { return; }),
-                          SubscriberAlreadyRegistered,
-                          [&](SubscriberAlreadyRegistered const&) { return true; });
+  BOOST_REQUIRE_EXCEPTION(
+    NetworkManager::get().add_subscriber("foo", "baz", [&](dunedaq::ipm::Receiver::Response) { return; }),
+    SubscriberAlreadyRegistered,
+    [&](SubscriberAlreadyRegistered const&) { return true; });
 
   NetworkManager::get().add_subscriber("foo", "bar", [&](dunedaq::ipm::Receiver::Response) { return; });
   BOOST_REQUIRE(NetworkManager::get().has_subscriber("foo", "bar"));
@@ -144,18 +148,20 @@ BOOST_FIXTURE_TEST_CASE(Subscriber, NetworkManagerSubscriberTestFixture)
   BOOST_REQUIRE(NetworkManager::get().has_subscriber("foo", "bar"));
 
   BOOST_REQUIRE(!NetworkManager::get().has_subscriber("bar", "baz"));
-  BOOST_REQUIRE_EXCEPTION(NetworkManager::get().add_subscriber("bar", "baz", [&](dunedaq::ipm::Receiver::Response) { return; }),
-                          ConnectionNotFound,
-                          [&](ConnectionNotFound const&) { return true; });
+  BOOST_REQUIRE_EXCEPTION(
+    NetworkManager::get().add_subscriber("bar", "baz", [&](dunedaq::ipm::Receiver::Response) { return; }),
+    ConnectionNotFound,
+    [&](ConnectionNotFound const&) { return true; });
   BOOST_REQUIRE(!NetworkManager::get().has_subscriber("bar", "baz"));
 
   BOOST_REQUIRE_EXCEPTION(NetworkManager::get().remove_subscriber("foo", "blah"),
                           SubscriberNotRegistered,
                           [&](SubscriberNotRegistered const&) { return true; });
 
-  BOOST_REQUIRE_EXCEPTION(NetworkManager::get().add_listener("foo", [&](dunedaq::ipm::Receiver::Response) { return; }),
-                          ConnectionTypeMismatch,
-                          [&](ConnectionTypeMismatch const&) { return true; });
+  BOOST_REQUIRE_EXCEPTION(
+    NetworkManager::get().start_listening("foo", [&](dunedaq::ipm::Receiver::Response) { return; }),
+    ConnectionTypeMismatch,
+    [&](ConnectionTypeMismatch const&) { return true; });
 }
 
 BOOST_FIXTURE_TEST_CASE(ReceiveFrom, NetworkManagerReceiverTestFixture)
@@ -171,6 +177,10 @@ BOOST_FIXTURE_TEST_CASE(ReceiveFrom, NetworkManagerReceiverTestFixture)
   BOOST_REQUIRE_EXCEPTION(NetworkManager::get().receive_from("foo", dunedaq::ipm::Receiver::s_no_block),
                           dunedaq::ipm::ReceiveTimeoutExpired,
                           [&](dunedaq::ipm::ReceiveTimeoutExpired const&) { return true; });
+
+  BOOST_REQUIRE_EXCEPTION(NetworkManager::get().receive_from("foo", dunedaq::ipm::Receiver::s_no_block, "bar"),
+                          ConnectionTypeMismatch,
+                          [&](ConnectionTypeMismatch const&) { return true; });
 }
 
 BOOST_FIXTURE_TEST_CASE(SendTo, NetworkManagerReceiverTestFixture)
@@ -181,7 +191,7 @@ BOOST_FIXTURE_TEST_CASE(SendTo, NetworkManagerReceiverTestFixture)
   std::function<void(dunedaq::ipm::Receiver::Response)> callback = [&](dunedaq::ipm::Receiver::Response response) {
     received_string = std::string(response.data.begin(), response.data.end());
   };
-  NetworkManager::get().add_listener("foo", callback);
+  NetworkManager::get().start_listening("foo", callback);
 
   received_string = "";
   sent_string = "this is the first test string";
@@ -214,14 +224,20 @@ BOOST_FIXTURE_TEST_CASE(Publish, NetworkManagerSubscriberTestFixture)
   std::string sent_string;
   std::string received_string;
 
+  BOOST_REQUIRE(!NetworkManager::get().is_connection_open("foo"));
+
   std::function<void(dunedaq::ipm::Receiver::Response)> callback = [&](dunedaq::ipm::Receiver::Response response) {
     received_string = std::string(response.data.begin(), response.data.end());
   };
   NetworkManager::get().add_subscriber("foo", "bar", callback);
 
+  BOOST_REQUIRE(NetworkManager::get().is_connection_open("foo"));
+
   received_string = "";
   sent_string = "this is the first test string";
+  BOOST_REQUIRE(!NetworkManager::get().is_connection_open("foo", NetworkManager::ConnectionDirection::Send));
   NetworkManager::get().send_to("foo", sent_string.c_str(), sent_string.size(), dunedaq::ipm::Sender::s_block, "bar");
+  BOOST_REQUIRE(NetworkManager::get().is_connection_open("foo", NetworkManager::ConnectionDirection::Send));
 
   while (received_string == "") {
     usleep(1000);
@@ -249,6 +265,22 @@ BOOST_FIXTURE_TEST_CASE(Publish, NetworkManagerSubscriberTestFixture)
   }
 
   BOOST_REQUIRE_EQUAL(received_string, sent_string);
+
+  std::string received_string2;
+  std::function<void(dunedaq::ipm::Receiver::Response)> callback2 = [&](dunedaq::ipm::Receiver::Response response) {
+    received_string2 = std::string(response.data.begin(), response.data.end());
+  };
+  NetworkManager::get().add_subscriber("foo", "", callback2);
+
+  sent_string = "this is a third test string";
+  received_string = "";
+  NetworkManager::get().send_to("foo", sent_string.c_str(), sent_string.size(), dunedaq::ipm::Sender::s_block, "bar");
+
+  while (received_string == "") {
+    usleep(1000);
+  }
+  BOOST_REQUIRE_EQUAL(received_string, sent_string);
+  BOOST_REQUIRE_EQUAL(received_string2, sent_string);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
