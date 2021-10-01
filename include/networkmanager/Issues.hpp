@@ -14,6 +14,12 @@
 
 namespace dunedaq {
 
+
+ERS_DECLARE_ISSUE(networkmanager,
+                  OperationFailed,
+                  message,
+                  ((std::string)message))
+
 	
 // Disable coverage collection LCOV_EXCL_START
 ERS_DECLARE_ISSUE(networkmanager, ConnectionNotFound, "Connection named " << name << " not found!", ((std::string)name))
