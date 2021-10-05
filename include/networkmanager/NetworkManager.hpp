@@ -22,6 +22,7 @@
 #include <chrono>
 #include <functional>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <thread>
 #include <unordered_map>
@@ -66,7 +67,8 @@ public:
 
   std::string get_connection_string(std::string const& connection_name) const;
 
-  bool is_connection_open(std::string const& connection_name, ConnectionDirection direction = ConnectionDirection::Recv) const;
+  bool is_connection_open(std::string const& connection_name,
+                          ConnectionDirection direction = ConnectionDirection::Recv) const;
   bool is_listening(std::string const& connection_name) const;
   bool has_subscriber(std::string const& connection_name, std::string const& topic) const;
 
@@ -88,6 +90,12 @@ private:
   std::unordered_map<std::string, std::shared_ptr<ipm::Sender>> m_sender_plugins;
   std::unordered_map<std::string, Listener> m_registered_listeners;
   std::unordered_map<std::string, Subscriber> m_registered_subscribers;
+
+  std::unique_lock<std::mutex>&& get_connection_lock(std::string const& connection_name) const;
+  mutable std::unordered_map<std::string, std::mutex> m_connection_mutexes;
+
+  std::mutex m_sender_create_mutex;
+  std::mutex m_receiver_create_mutex;
 };
 } // namespace networkmanager
 } // namespace dunedaq

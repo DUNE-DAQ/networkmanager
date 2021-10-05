@@ -211,12 +211,14 @@ NetworkManager::send_to(std::string const& connection_name,
     create_sender(connection_name);
   }
 
+  auto send_mutex = get_connection_lock(connection_name);
   return m_sender_plugins[connection_name]->send(buffer, size, timeout, topic);
 }
 
 void
 NetworkManager::create_receiver(std::string const& connection_name)
 {
+  std::lock_guard<std::mutex> lk(m_receiver_create_mutex);
   if (m_receiver_plugins.count(connection_name))
     return;
 
@@ -231,6 +233,7 @@ NetworkManager::create_receiver(std::string const& connection_name)
 void
 NetworkManager::create_sender(std::string const& connection_name)
 {
+  std::lock_guard<std::mutex> lk(m_sender_create_mutex);
   if (m_sender_plugins.count(connection_name))
     return;
 
@@ -240,6 +243,17 @@ NetworkManager::create_sender(std::string const& connection_name)
   m_sender_plugins[connection_name] = dunedaq::ipm::make_ipm_sender(plugin_type);
   m_sender_plugins[connection_name]->connect_for_sends(
     { { "connection_string", m_connection_map[connection_name].address } });
+}
+
+std::unique_lock<std::mutex>&&
+NetworkManager::get_connection_lock(std::string const& connection_name) const
+{
+  if (m_connection_mutexes.count(connection_name)) {
+    return std::move(std::unique_lock<std::mutex>(m_connection_mutexes.at(connection_name)));
+  }
+  static std::mutex connection_map_mutex;
+  std::lock_guard<std::mutex> lk(connection_map_mutex);
+  return std::move(std::unique_lock<std::mutex>(m_connection_mutexes[connection_name]));
 }
 
 } // namespace dunedaq::networkmanager

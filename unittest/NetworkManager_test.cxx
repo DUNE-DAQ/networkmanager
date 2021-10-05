@@ -9,6 +9,8 @@
 #include "networkmanager/NetworkManager.hpp"
 #include "networkmanager/networkmanager/Structs.hpp"
 
+#include "logging/Logging.hpp"
+
 #define BOOST_TEST_MODULE NetworkManager_test // NOLINT
 
 #include "boost/test/unit_test.hpp"
@@ -281,6 +283,56 @@ BOOST_FIXTURE_TEST_CASE(Publish, NetworkManagerSubscriberTestFixture)
   }
   BOOST_REQUIRE_EQUAL(received_string, sent_string);
   BOOST_REQUIRE_EQUAL(received_string2, sent_string);
+}
+
+BOOST_FIXTURE_TEST_CASE(SendThreadSafety, NetworkManagerReceiverTestFixture)
+{
+  const std::string pattern_string =
+    "aaaaabbbbbcccccdddddeeeeefffffggggghhhhhiiiiijjjjjkkkkklllllmmmmmnnnnnooooopppppqqqqqrrrrrssssstttttuuuuuvvvvvwwww"
+    "wxxxxxyyyyyzzzzzAAAAABBBBBCCCCCDDDDDEEEEEFFFFFGGGGGHHHHHIIIIIJJJJJKKKKKLLLLLMMMMMNNNNNOOOOOPPPPPQQQQQRRRRRSSSSSTTT"
+    "TTUUUUUVVVVVWWWWWXXXXXYYYYYZZZZZ";
+
+  auto substr_proc = [&](int idx) {
+    auto string_idx = idx % pattern_string.size();
+    if (string_idx + 5 < pattern_string.size()) {
+      return pattern_string.substr(string_idx, 5);
+    } else {
+      return pattern_string.substr(string_idx, 5) + pattern_string.substr(0, string_idx - pattern_string.size() + 5);
+    }
+  };
+
+  auto send_proc = [&](int idx) {
+    std::string buf = std::to_string(idx) + substr_proc(idx);
+    TLOG_DEBUG(10) << "Sending " << buf << " for idx " << idx;
+    NetworkManager::get().send_to("foo", buf.c_str(), buf.size(), dunedaq::ipm::Sender::s_block);
+  };
+
+  auto recv_proc = [&](dunedaq::ipm::Receiver::Response response) {
+    auto received_idx = std::stoi(std::string(response.data.begin(), response.data.end()));
+    auto idx_string = std::to_string(received_idx);
+    auto received_string = std::string(response.data.begin() + idx_string.size(), response.data.end());
+
+    TLOG_DEBUG(11) << "Received " << received_string << " for idx " << received_idx;
+
+    BOOST_REQUIRE_EQUAL(received_string.size(), 5);
+
+    std::string check = substr_proc(received_idx);
+
+    BOOST_REQUIRE_EQUAL(received_string, check);
+  };
+
+  NetworkManager::get().start_listening("foo", recv_proc);
+
+  const int thread_count = 1000;
+  std::array<std::thread, thread_count> threads;
+
+  for (int idx = 0; idx < thread_count; ++idx) {
+    threads[idx] = std::thread(send_proc, idx);
+  }
+
+  for (int idx = 0; idx < thread_count; ++idx) {
+    threads[idx].join();
+  }
 }
 
 BOOST_AUTO_TEST_SUITE_END()
