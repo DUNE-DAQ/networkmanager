@@ -8,6 +8,7 @@
 
 #include "networkmanager/NetworkManager.hpp"
 #include "ipm/Subscriber.hpp"
+#include "logging/Logging.hpp"
 
 namespace dunedaq::networkmanager {
 
@@ -118,9 +119,11 @@ NetworkManager::reset()
     subscriber_pair.second.shutdown();
   }
   m_registered_listeners.clear();
+  m_registered_subscribers.clear();
   m_sender_plugins.clear();
   m_receiver_plugins.clear();
   m_connection_map.clear();
+  m_connection_mutexes.clear();
 }
 std::string
 NetworkManager::get_connection_string(std::string const& connection_name) const
@@ -203,15 +206,19 @@ NetworkManager::send_to(std::string const& connection_name,
                         ipm::Sender::duration_t timeout,
                         std::string const& topic)
 {
+  TLOG_DEBUG(10) << "Checking connection map";
   if (!m_connection_map.count(connection_name)) {
     throw ConnectionNotFound(ERS_HERE, connection_name);
   }
 
+  TLOG_DEBUG(10) << "Checking sender plugins";
   if (!m_sender_plugins.count(connection_name)) {
     create_sender(connection_name);
   }
 
+  TLOG_DEBUG(10) << "Getting connection lock for connection " << connection_name;
   auto send_mutex = get_connection_lock(connection_name);
+  TLOG_DEBUG(10) << "Sending message";
   return m_sender_plugins[connection_name]->send(buffer, size, timeout, topic);
 }
 
@@ -233,14 +240,20 @@ NetworkManager::create_receiver(std::string const& connection_name)
 void
 NetworkManager::create_sender(std::string const& connection_name)
 {
+  TLOG_DEBUG(11) << "Getting create mutex";
   std::lock_guard<std::mutex> lk(m_sender_create_mutex);
+  TLOG_DEBUG(11) << "Checking plugin list";
   if (m_sender_plugins.count(connection_name))
     return;
 
+  auto conn_lock = get_connection_lock(connection_name);
+
+  TLOG_DEBUG(11) << "Creating sender plugin for connection " << connection_name;
   auto plugin_type =
     m_connection_map[connection_name].type == networkmanager::Type::Receiver ? "ZmqSender" : "ZmqPublisher";
 
   m_sender_plugins[connection_name] = dunedaq::ipm::make_ipm_sender(plugin_type);
+  TLOG_DEBUG(11) << "Connecting sender plugin for connection " << connection_name;
   m_sender_plugins[connection_name]->connect_for_sends(
     { { "connection_string", m_connection_map[connection_name].address } });
 }
@@ -248,9 +261,13 @@ NetworkManager::create_sender(std::string const& connection_name)
 std::unique_lock<std::mutex>&&
 NetworkManager::get_connection_lock(std::string const& connection_name) const
 {
+  TLOG_DEBUG(12) << "Checking for existing mutex for connection " << connection_name;
   if (m_connection_mutexes.count(connection_name)) {
+
+    TLOG_DEBUG(12) << "Using existing mutex for connection " << connection_name;
     return std::move(std::unique_lock<std::mutex>(m_connection_mutexes.at(connection_name)));
   }
+  TLOG_DEBUG(12) << "Creating mutex for connection " << connection_name;
   static std::mutex connection_map_mutex;
   std::lock_guard<std::mutex> lk(connection_map_mutex);
   return std::move(std::unique_lock<std::mutex>(m_connection_mutexes[connection_name]));

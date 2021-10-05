@@ -287,6 +287,7 @@ BOOST_FIXTURE_TEST_CASE(Publish, NetworkManagerSubscriberTestFixture)
 
 BOOST_FIXTURE_TEST_CASE(SendThreadSafety, NetworkManagerReceiverTestFixture)
 {
+  TLOG_DEBUG(12) << "SendThreadSafety test case BEGIN";
   const std::string pattern_string =
     "aaaaabbbbbcccccdddddeeeeefffffggggghhhhhiiiiijjjjjkkkkklllllmmmmmnnnnnooooopppppqqqqqrrrrrssssstttttuuuuuvvvvvwwww"
     "wxxxxxyyyyyzzzzzAAAAABBBBBCCCCCDDDDDEEEEEFFFFFGGGGGHHHHHIIIIIJJJJJKKKKKLLLLLMMMMMNNNNNOOOOOPPPPPQQQQQRRRRRSSSSSTTT"
@@ -326,13 +327,15 @@ BOOST_FIXTURE_TEST_CASE(SendThreadSafety, NetworkManagerReceiverTestFixture)
   const int thread_count = 1000;
   std::array<std::thread, thread_count> threads;
 
+  TLOG_DEBUG(12) << "Before starting send threads";
   for (int idx = 0; idx < thread_count; ++idx) {
     threads[idx] = std::thread(send_proc, idx);
   }
-
+  TLOG_DEBUG(12) << "After starting send threads";
   for (int idx = 0; idx < thread_count; ++idx) {
     threads[idx].join();
   }
+  TLOG_DEBUG(12) << "SendThreadSafety test case END";
 }
 
 BOOST_AUTO_TEST_SUITE_END()
