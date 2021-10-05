@@ -172,6 +172,7 @@ NetworkManager::receive_from(std::string const& connection_name,
                              ipm::Receiver::duration_t timeout,
                              std::string const& topic)
 {
+  TLOG_DEBUG(9) << "START";
   if (!m_connection_map.count(connection_name)) {
     throw ConnectionNotFound(ERS_HERE, connection_name);
   }
@@ -196,6 +197,7 @@ NetworkManager::receive_from(std::string const& connection_name,
     subscriber->unsubscribe(topic);
   }
 
+  TLOG_DEBUG(9) << "END";
   return res;
 }
 
@@ -206,6 +208,9 @@ NetworkManager::send_to(std::string const& connection_name,
                         ipm::Sender::duration_t timeout,
                         std::string const& topic)
 {
+  TLOG_DEBUG(10) << "Getting connection lock for connection " << connection_name;
+  auto send_mutex = get_connection_lock(connection_name);
+
   TLOG_DEBUG(10) << "Checking connection map";
   if (!m_connection_map.count(connection_name)) {
     throw ConnectionNotFound(ERS_HERE, connection_name);
@@ -216,8 +221,6 @@ NetworkManager::send_to(std::string const& connection_name,
     create_sender(connection_name);
   }
 
-  TLOG_DEBUG(10) << "Getting connection lock for connection " << connection_name;
-  auto send_mutex = get_connection_lock(connection_name);
   TLOG_DEBUG(10) << "Sending message";
   return m_sender_plugins[connection_name]->send(buffer, size, timeout, topic);
 }
@@ -246,8 +249,6 @@ NetworkManager::create_sender(std::string const& connection_name)
   if (m_sender_plugins.count(connection_name))
     return;
 
-  auto conn_lock = get_connection_lock(connection_name);
-
   TLOG_DEBUG(11) << "Creating sender plugin for connection " << connection_name;
   auto plugin_type =
     m_connection_map[connection_name].type == networkmanager::Type::Receiver ? "ZmqSender" : "ZmqPublisher";
@@ -258,19 +259,16 @@ NetworkManager::create_sender(std::string const& connection_name)
     { { "connection_string", m_connection_map[connection_name].address } });
 }
 
-std::unique_lock<std::mutex>&&
+std::unique_lock<std::mutex>
 NetworkManager::get_connection_lock(std::string const& connection_name) const
 {
-  TLOG_DEBUG(12) << "Checking for existing mutex for connection " << connection_name;
-  if (m_connection_mutexes.count(connection_name)) {
-
-    TLOG_DEBUG(12) << "Using existing mutex for connection " << connection_name;
-    return std::move(std::unique_lock<std::mutex>(m_connection_mutexes.at(connection_name)));
-  }
-  TLOG_DEBUG(12) << "Creating mutex for connection " << connection_name;
   static std::mutex connection_map_mutex;
   std::lock_guard<std::mutex> lk(connection_map_mutex);
-  return std::move(std::unique_lock<std::mutex>(m_connection_mutexes[connection_name]));
+
+  auto& mut = m_connection_mutexes[connection_name];
+  TLOG_DEBUG(13) << "Mutex for connection " << connection_name << " is at " << &mut;
+  std::unique_lock<std::mutex> conn_lk(mut);
+  return conn_lk;
 }
 
 } // namespace dunedaq::networkmanager

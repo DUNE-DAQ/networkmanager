@@ -91,7 +91,7 @@ private:
   std::unordered_map<std::string, Listener> m_registered_listeners;
   std::unordered_map<std::string, Subscriber> m_registered_subscribers;
 
-  std::unique_lock<std::mutex>&& get_connection_lock(std::string const& connection_name) const;
+  std::unique_lock<std::mutex> get_connection_lock(std::string const& connection_name) const;
   mutable std::unordered_map<std::string, std::mutex> m_connection_mutexes;
 
   std::mutex m_sender_create_mutex;
