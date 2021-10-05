@@ -309,8 +309,7 @@ BOOST_FIXTURE_TEST_CASE(SendThreadSafety, NetworkManagerReceiverTestFixture)
   };
 
   auto recv_proc = [&](dunedaq::ipm::Receiver::Response response) {
-    if (response.data.size() > 0) {
-    
+    BOOST_REQUIRE(response.data.size() > 0);    
     auto received_idx = std::stoi(std::string(response.data.begin(), response.data.end()));
     auto idx_string = std::to_string(received_idx);
     auto received_string = std::string(response.data.begin() + idx_string.size(), response.data.end());
@@ -322,10 +321,6 @@ BOOST_FIXTURE_TEST_CASE(SendThreadSafety, NetworkManagerReceiverTestFixture)
     std::string check = substr_proc(received_idx);
 
     BOOST_REQUIRE_EQUAL(received_string, check);
-    } else {
-      TLOG_DEBUG(11) << "Empty response received!";
-      BOOST_REQUIRE(false);
-    }
   };
 
   NetworkManager::get().start_listening("foo", recv_proc);
