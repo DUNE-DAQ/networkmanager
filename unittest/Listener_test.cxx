@@ -8,7 +8,7 @@
 
 #include "networkmanager/Listener.hpp"
 #include "networkmanager/NetworkManager.hpp"
-#include "networkmanager/networkmanager/Structs.hpp"
+#include "networkmanager/nwmgr/Structs.hpp"
 
 #define BOOST_TEST_MODULE Listener_test // NOLINT
 
@@ -25,12 +25,12 @@ struct NetworkManagerTestFixture
 {
   NetworkManagerTestFixture()
   {
-    networkmanager::Conf testConfig;
-    networkmanager::Connection testConn;
+    nwmgr::Connections testConfig;
+    nwmgr::Connection testConn;
     testConn.name = "foo";
     testConn.address = "inproc://bar";
-    testConn.type = networkmanager::Type::Receiver;
-    testConfig.connections.push_back(testConn);
+    testConn.type = nwmgr::Type::Receiver;
+    testConfig.push_back(testConn);
     NetworkManager::get().configure(testConfig);
   }
   ~NetworkManagerTestFixture() { NetworkManager::get().reset(); }

@@ -8,17 +8,16 @@
 #ifndef NETWORKMANAGER_INCLUDE_NETWORKMANAGER_ISSUES_HPP_
 #define NETWORKMANAGER_INCLUDE_NETWORKMANAGER_ISSUES_HPP_
 
-#include <ers/Issue.hpp>
+#include "ers/Issue.hpp"
 
 #include <string>
 
 namespace dunedaq {
 
-
 ERS_DECLARE_ISSUE(networkmanager,
                   OperationFailed,
-                  message,
-                  ((std::string)message))
+                  "pippo" << mymsg,
+                  ((std::string) mymsg))
 
 	
 // Disable coverage collection LCOV_EXCL_START

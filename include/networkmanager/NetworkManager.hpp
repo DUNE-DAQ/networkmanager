@@ -13,7 +13,7 @@
 #include "networkmanager/Issues.hpp"
 #include "networkmanager/Listener.hpp"
 #include "networkmanager/Subscriber.hpp"
-#include "networkmanager/networkmanager/Structs.hpp"
+#include "networkmanager/nwmgr/Structs.hpp"
 
 #include "ipm/Receiver.hpp"
 #include "ipm/Sender.hpp"
@@ -61,7 +61,7 @@ public:
                                        ipm::Receiver::duration_t timeout,
                                        std::string const& topic = "");
 
-  void configure(networkmanager::Conf configuration);
+  void configure(const nwmgr::Connections& connections);
   void reset();
 
   std::string get_connection_string(std::string const& connection_name) const;
@@ -83,7 +83,7 @@ private:
   void create_receiver(std::string const& connection_name);
   void create_sender(std::string const& connection_name);
 
-  std::unordered_map<std::string, networkmanager::Connection> m_connection_map;
+  std::unordered_map<std::string, nwmgr::Connection> m_connection_map;
   std::unordered_map<std::string, std::shared_ptr<ipm::Receiver>> m_receiver_plugins;
   std::unordered_map<std::string, std::shared_ptr<ipm::Sender>> m_sender_plugins;
   std::unordered_map<std::string, Listener> m_registered_listeners;

@@ -17,7 +17,7 @@ find_package(nlohmann_json REQUIRED)
 # Schema
 
 daq_codegen(
-  networkmanager.jsonnet
+  nwmgr.jsonnet
   TEMPLATES Structs.hpp.j2 Nljs.hpp.j2
 )
 
