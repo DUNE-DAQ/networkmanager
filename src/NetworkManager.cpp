@@ -237,8 +237,13 @@ NetworkManager::create_receiver(std::string const& connection_name)
     m_connection_map[connection_name].type == networkmanager::Type::Receiver ? "ZmqReceiver" : "ZmqSubscriber";
 
   m_receiver_plugins[connection_name] = dunedaq::ipm::make_ipm_receiver(plugin_type);
-  m_receiver_plugins[connection_name]->connect_for_receives(
-    { { "connection_string", m_connection_map[connection_name].address } });
+  try {
+    m_receiver_plugins[connection_name]->connect_for_receives(
+      { { "connection_string", m_connection_map[connection_name].address } });
+  } catch (ers::Issue const&) {
+    m_receiver_plugins.erase(connection_name);
+    throw;
+  }
 }
 
 void
@@ -257,8 +262,13 @@ NetworkManager::create_sender(std::string const& connection_name)
 
   m_sender_plugins[connection_name] = dunedaq::ipm::make_ipm_sender(plugin_type);
   TLOG_DEBUG(11) << "Connecting sender plugin for connection " << connection_name;
-  m_sender_plugins[connection_name]->connect_for_sends(
-    { { "connection_string", m_connection_map[connection_name].address } });
+  try {
+    m_sender_plugins[connection_name]->connect_for_sends(
+      { { "connection_string", m_connection_map[connection_name].address } });
+  } catch (ers::Issue const&) {
+    m_sender_plugins.erase(connection_name);
+    throw;
+  }
 }
 
 std::unique_lock<std::mutex>
