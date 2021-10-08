@@ -93,9 +93,6 @@ private:
 
   std::unique_lock<std::mutex> get_connection_lock(std::string const& connection_name) const;
   mutable std::unordered_map<std::string, std::mutex> m_connection_mutexes;
-
-  std::mutex m_sender_create_mutex;
-  std::mutex m_receiver_create_mutex;
 };
 } // namespace networkmanager
 } // namespace dunedaq

@@ -228,7 +228,8 @@ NetworkManager::send_to(std::string const& connection_name,
 void
 NetworkManager::create_receiver(std::string const& connection_name)
 {
-  std::lock_guard<std::mutex> lk(m_receiver_create_mutex);
+  static std::mutex receiver_create_mutex;
+  std::lock_guard<std::mutex> lk(receiver_create_mutex);
   if (m_receiver_plugins.count(connection_name))
     return;
 
@@ -244,7 +245,8 @@ void
 NetworkManager::create_sender(std::string const& connection_name)
 {
   TLOG_DEBUG(11) << "Getting create mutex";
-  std::lock_guard<std::mutex> lk(m_sender_create_mutex);
+  static std::mutex sender_create_mutex;
+  std::lock_guard<std::mutex> lk(sender_create_mutex);
   TLOG_DEBUG(11) << "Checking plugin list";
   if (m_sender_plugins.count(connection_name))
     return;
@@ -263,9 +265,10 @@ std::unique_lock<std::mutex>
 NetworkManager::get_connection_lock(std::string const& connection_name) const
 {
   static std::mutex connection_map_mutex;
-  std::lock_guard<std::mutex> lk(connection_map_mutex);
-
+  std::unique_lock<std::mutex> lk(connection_map_mutex);
   auto& mut = m_connection_mutexes[connection_name];
+  lk.unlock();
+
   TLOG_DEBUG(13) << "Mutex for connection " << connection_name << " is at " << &mut;
   std::unique_lock<std::mutex> conn_lk(mut);
   return conn_lk;
