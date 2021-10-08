@@ -27,6 +27,7 @@ void
 NetworkManager::start_listening(std::string const& connection_name,
                                 std::function<void(ipm::Receiver::Response)> callback)
 {
+  std::lock_guard<std::mutex> lk(m_registration_mutex);
   if (!m_connection_map.count(connection_name)) {
     throw ConnectionNotFound(ERS_HERE, connection_name);
   }
@@ -48,6 +49,7 @@ NetworkManager::start_listening(std::string const& connection_name,
 void
 NetworkManager::stop_listening(std::string const& connection_name)
 {
+  std::lock_guard<std::mutex> lk(m_registration_mutex);
   if (!is_listening(connection_name)) {
     throw ListenerNotRegistered(ERS_HERE, connection_name);
   }
@@ -60,6 +62,7 @@ NetworkManager::add_subscriber(std::string const& connection_name,
                                std::string const& topic,
                                std::function<void(ipm::Receiver::Response)> callback)
 {
+  std::lock_guard<std::mutex> lk(m_registration_mutex);
   if (!m_connection_map.count(connection_name)) {
     throw ConnectionNotFound(ERS_HERE, connection_name);
   }
@@ -88,6 +91,7 @@ NetworkManager::add_subscriber(std::string const& connection_name,
 void
 NetworkManager::remove_subscriber(std::string const& connection_name, std::string const& topic)
 {
+  std::lock_guard<std::mutex> lk(m_registration_mutex);
   if (!has_subscriber(connection_name, topic)) {
     throw SubscriberNotRegistered(ERS_HERE, connection_name, topic);
   }
@@ -112,6 +116,7 @@ NetworkManager::configure(networkmanager::Conf configuration)
 void
 NetworkManager::reset()
 {
+  std::lock_guard<std::mutex> lk(m_registration_mutex);
   for (auto& listener_pair : m_registered_listeners) {
     listener_pair.second.shutdown();
   }
@@ -125,6 +130,7 @@ NetworkManager::reset()
   m_connection_map.clear();
   m_connection_mutexes.clear();
 }
+
 std::string
 NetworkManager::get_connection_string(std::string const& connection_name) const
 {
