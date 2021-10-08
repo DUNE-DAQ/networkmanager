@@ -309,7 +309,7 @@ BOOST_FIXTURE_TEST_CASE(SendThreadSafety, NetworkManagerReceiverTestFixture)
   };
 
   auto recv_proc = [&](dunedaq::ipm::Receiver::Response response) {
-    BOOST_REQUIRE(response.data.size() > 0);    
+    BOOST_REQUIRE(response.data.size() > 0);
     auto received_idx = std::stoi(std::string(response.data.begin(), response.data.end()));
     auto idx_string = std::to_string(received_idx);
     auto received_string = std::string(response.data.begin() + idx_string.size(), response.data.end());
@@ -337,6 +337,38 @@ BOOST_FIXTURE_TEST_CASE(SendThreadSafety, NetworkManagerReceiverTestFixture)
     threads[idx].join();
   }
   TLOG_DEBUG(12) << "SendThreadSafety test case END";
+}
+
+BOOST_FIXTURE_TEST_CASE(OneListenerThreaded, NetworkManagerReceiverTestFixture)
+{
+  auto callback = [&](dunedaq::ipm::Receiver::Response) { return; };
+  const int thread_count = 1000;
+  std::atomic<size_t> num_connected = 0;
+  std::atomic<size_t> num_fail = 0;
+
+  auto reg_proc = [&](int idx) {
+    try {
+      NetworkManager::get().start_listening("foo", callback);
+    } catch (ListenerAlreadyRegistered const&) {
+      num_fail++;
+      TLOG_DEBUG(13) << "Listener " << idx << " failed to register";
+      return;
+    }
+    TLOG_DEBUG(13) << "Listener " << idx << " successfully started";
+    num_connected++;
+  };
+
+  std::array<std::thread, thread_count> threads;
+
+  for (int idx = 0; idx < thread_count; ++idx) {
+    threads[idx] = std::thread(reg_proc, idx);
+  }
+  for (int idx = 0; idx < thread_count; ++idx) {
+    threads[idx].join();
+  }
+
+  BOOST_REQUIRE_EQUAL(num_connected.load(), 1);
+  BOOST_REQUIRE_EQUAL(num_fail.load(), thread_count - 1);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
