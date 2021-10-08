@@ -371,4 +371,82 @@ BOOST_FIXTURE_TEST_CASE(OneListenerThreaded, NetworkManagerReceiverTestFixture)
   BOOST_REQUIRE_EQUAL(num_fail.load(), thread_count - 1);
 }
 
+BOOST_AUTO_TEST_CASE(ManyThreadsSendingAndReceiving)
+{
+  const int num_sending_threads = 1000;
+  const int num_receivers = 5;
+
+  networkmanager::Conf testConfig;
+  for (int i = 0; i < num_receivers; ++i) {
+    networkmanager::Connection testConn;
+    testConn.name = "foo" + std::to_string(i);
+    testConn.address = "inproc://bar" + std::to_string(i);
+    testConn.type = networkmanager::Type::Receiver;
+    testConfig.connections.push_back(testConn);
+  }
+  NetworkManager::get().configure(testConfig);
+
+  const std::string pattern_string =
+    "aaaaabbbbbcccccdddddeeeeefffffggggghhhhhiiiiijjjjjkkkkklllllmmmmmnnnnnooooopppppqqqqqrrrrrssssstttttuuuuuvvvvvwwww"
+    "wxxxxxyyyyyzzzzzAAAAABBBBBCCCCCDDDDDEEEEEFFFFFGGGGGHHHHHIIIIIJJJJJKKKKKLLLLLMMMMMNNNNNOOOOOPPPPPQQQQQRRRRRSSSSSTTT"
+    "TTUUUUUVVVVVWWWWWXXXXXYYYYYZZZZZ";
+
+  auto substr_proc = [&](int idx) {
+    auto string_idx = idx % pattern_string.size();
+    if (string_idx + 5 < pattern_string.size()) {
+      return pattern_string.substr(string_idx, 5);
+    } else {
+      return pattern_string.substr(string_idx, 5) + pattern_string.substr(0, string_idx - pattern_string.size() + 5);
+    }
+  };
+  auto send_proc = [&](int idx) {
+    std::string buf = std::to_string(idx) + substr_proc(idx);
+    for (int i = 0; i < num_receivers; ++i) {
+      TLOG_DEBUG(14) << "Sending " << buf << " for idx " << idx << " to receiver " << i;
+      NetworkManager::get().send_to("foo" + std::to_string(i), buf.c_str(), buf.size(), dunedaq::ipm::Sender::s_block);
+    }
+  };
+
+  std::array<std::atomic<size_t>, num_receivers> messages_received;
+  std::array<std::function<void(dunedaq::ipm::Receiver::Response)>, num_receivers> recv_procs;
+
+  for (int i = 0; i < num_receivers; ++i) {
+    messages_received[i] = 0;
+    recv_procs[i] = [&,i](dunedaq::ipm::Receiver::Response response) {
+      BOOST_REQUIRE(response.data.size() > 0);
+      auto received_idx = std::stoi(std::string(response.data.begin(), response.data.end()));
+      auto idx_string = std::to_string(received_idx);
+      auto received_string = std::string(response.data.begin() + idx_string.size(), response.data.end());
+
+      TLOG_DEBUG(14) << "Receiver " << i << " received " << received_string << " for idx " << received_idx;
+
+      BOOST_REQUIRE_EQUAL(received_string.size(), 5);
+
+      std::string check = substr_proc(received_idx);
+
+      BOOST_REQUIRE_EQUAL(received_string, check);
+      messages_received[i]++;
+    };
+    NetworkManager::get().start_listening("foo" + std::to_string(i), recv_procs[i]);
+  }
+
+  const int thread_count = 1000;
+  std::array<std::thread, thread_count> threads;
+
+  TLOG_DEBUG(14) << "Before starting send threads";
+  for (int idx = 0; idx < thread_count; ++idx) {
+    threads[idx] = std::thread(send_proc, idx);
+  }
+  TLOG_DEBUG(14) << "After starting send threads";
+  for (int idx = 0; idx < thread_count; ++idx) {
+    threads[idx].join();
+  }
+
+  NetworkManager::get().reset();
+
+  for (auto i = 0; i < num_receivers; ++i) {
+    BOOST_REQUIRE_EQUAL(messages_received[i], num_sending_threads);
+  }
+}
+
 BOOST_AUTO_TEST_SUITE_END()
