@@ -8,6 +8,7 @@
 
 #include "networkmanager/NetworkManager.hpp"
 #include "ipm/Subscriber.hpp"
+#include "logging/Logging.hpp"
 
 namespace dunedaq::networkmanager {
 
@@ -26,6 +27,7 @@ void
 NetworkManager::start_listening(std::string const& connection_name,
                                 std::function<void(ipm::Receiver::Response)> callback)
 {
+  std::lock_guard<std::mutex> lk(m_registration_mutex);
   if (!m_connection_map.count(connection_name)) {
     throw ConnectionNotFound(ERS_HERE, connection_name);
   }
@@ -47,6 +49,7 @@ NetworkManager::start_listening(std::string const& connection_name,
 void
 NetworkManager::stop_listening(std::string const& connection_name)
 {
+  std::lock_guard<std::mutex> lk(m_registration_mutex);
   if (!is_listening(connection_name)) {
     throw ListenerNotRegistered(ERS_HERE, connection_name);
   }
@@ -59,6 +62,7 @@ NetworkManager::add_subscriber(std::string const& connection_name,
                                std::string const& topic,
                                std::function<void(ipm::Receiver::Response)> callback)
 {
+  std::lock_guard<std::mutex> lk(m_registration_mutex);
   if (!m_connection_map.count(connection_name)) {
     throw ConnectionNotFound(ERS_HERE, connection_name);
   }
@@ -87,6 +91,7 @@ NetworkManager::add_subscriber(std::string const& connection_name,
 void
 NetworkManager::remove_subscriber(std::string const& connection_name, std::string const& topic)
 {
+  std::lock_guard<std::mutex> lk(m_registration_mutex);
   if (!has_subscriber(connection_name, topic)) {
     throw SubscriberNotRegistered(ERS_HERE, connection_name, topic);
   }
@@ -111,6 +116,7 @@ NetworkManager::configure(networkmanager::Conf configuration)
 void
 NetworkManager::reset()
 {
+  std::lock_guard<std::mutex> lk(m_registration_mutex);
   for (auto& listener_pair : m_registered_listeners) {
     listener_pair.second.shutdown();
   }
@@ -118,10 +124,13 @@ NetworkManager::reset()
     subscriber_pair.second.shutdown();
   }
   m_registered_listeners.clear();
+  m_registered_subscribers.clear();
   m_sender_plugins.clear();
   m_receiver_plugins.clear();
   m_connection_map.clear();
+  m_connection_mutexes.clear();
 }
+
 std::string
 NetworkManager::get_connection_string(std::string const& connection_name) const
 {
@@ -169,6 +178,7 @@ NetworkManager::receive_from(std::string const& connection_name,
                              ipm::Receiver::duration_t timeout,
                              std::string const& topic)
 {
+  TLOG_DEBUG(9) << "START";
   if (!m_connection_map.count(connection_name)) {
     throw ConnectionNotFound(ERS_HERE, connection_name);
   }
@@ -193,6 +203,7 @@ NetworkManager::receive_from(std::string const& connection_name,
     subscriber->unsubscribe(topic);
   }
 
+  TLOG_DEBUG(9) << "END";
   return res;
 }
 
@@ -203,20 +214,28 @@ NetworkManager::send_to(std::string const& connection_name,
                         ipm::Sender::duration_t timeout,
                         std::string const& topic)
 {
+  TLOG_DEBUG(10) << "Getting connection lock for connection " << connection_name;
+  auto send_mutex = get_connection_lock(connection_name);
+
+  TLOG_DEBUG(10) << "Checking connection map";
   if (!m_connection_map.count(connection_name)) {
     throw ConnectionNotFound(ERS_HERE, connection_name);
   }
 
+  TLOG_DEBUG(10) << "Checking sender plugins";
   if (!m_sender_plugins.count(connection_name)) {
     create_sender(connection_name);
   }
 
+  TLOG_DEBUG(10) << "Sending message";
   return m_sender_plugins[connection_name]->send(buffer, size, timeout, topic);
 }
 
 void
 NetworkManager::create_receiver(std::string const& connection_name)
 {
+  static std::mutex receiver_create_mutex;
+  std::lock_guard<std::mutex> lk(receiver_create_mutex);
   if (m_receiver_plugins.count(connection_name))
     return;
 
@@ -224,22 +243,51 @@ NetworkManager::create_receiver(std::string const& connection_name)
     m_connection_map[connection_name].type == networkmanager::Type::Receiver ? "ZmqReceiver" : "ZmqSubscriber";
 
   m_receiver_plugins[connection_name] = dunedaq::ipm::make_ipm_receiver(plugin_type);
-  m_receiver_plugins[connection_name]->connect_for_receives(
-    { { "connection_string", m_connection_map[connection_name].address } });
+  try {
+    m_receiver_plugins[connection_name]->connect_for_receives(
+      { { "connection_string", m_connection_map[connection_name].address } });
+  } catch (ers::Issue const&) {
+    m_receiver_plugins.erase(connection_name);
+    throw;
+  }
 }
 
 void
 NetworkManager::create_sender(std::string const& connection_name)
 {
+  TLOG_DEBUG(11) << "Getting create mutex";
+  static std::mutex sender_create_mutex;
+  std::lock_guard<std::mutex> lk(sender_create_mutex);
+  TLOG_DEBUG(11) << "Checking plugin list";
   if (m_sender_plugins.count(connection_name))
     return;
 
+  TLOG_DEBUG(11) << "Creating sender plugin for connection " << connection_name;
   auto plugin_type =
     m_connection_map[connection_name].type == networkmanager::Type::Receiver ? "ZmqSender" : "ZmqPublisher";
 
   m_sender_plugins[connection_name] = dunedaq::ipm::make_ipm_sender(plugin_type);
-  m_sender_plugins[connection_name]->connect_for_sends(
-    { { "connection_string", m_connection_map[connection_name].address } });
+  TLOG_DEBUG(11) << "Connecting sender plugin for connection " << connection_name;
+  try {
+    m_sender_plugins[connection_name]->connect_for_sends(
+      { { "connection_string", m_connection_map[connection_name].address } });
+  } catch (ers::Issue const&) {
+    m_sender_plugins.erase(connection_name);
+    throw;
+  }
+}
+
+std::unique_lock<std::mutex>
+NetworkManager::get_connection_lock(std::string const& connection_name) const
+{
+  static std::mutex connection_map_mutex;
+  std::unique_lock<std::mutex> lk(connection_map_mutex);
+  auto& mut = m_connection_mutexes[connection_name];
+  lk.unlock();
+
+  TLOG_DEBUG(13) << "Mutex for connection " << connection_name << " is at " << &mut;
+  std::unique_lock<std::mutex> conn_lk(mut);
+  return conn_lk;
 }
 
 } // namespace dunedaq::networkmanager
