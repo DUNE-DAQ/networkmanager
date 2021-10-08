@@ -373,8 +373,8 @@ BOOST_FIXTURE_TEST_CASE(OneListenerThreaded, NetworkManagerReceiverTestFixture)
 
 BOOST_AUTO_TEST_CASE(ManyThreadsSendingAndReceiving)
 {
-  const int num_sending_threads = 1000;
-  const int num_receivers = 5;
+  const int num_sending_threads = 100;
+  const int num_receivers = 50;
 
   networkmanager::Conf testConfig;
   for (int i = 0; i < num_receivers; ++i) {
@@ -430,15 +430,14 @@ BOOST_AUTO_TEST_CASE(ManyThreadsSendingAndReceiving)
     NetworkManager::get().start_listening("foo" + std::to_string(i), recv_procs[i]);
   }
 
-  const int thread_count = 1000;
-  std::array<std::thread, thread_count> threads;
+  std::array<std::thread, num_sending_threads> threads;
 
   TLOG_DEBUG(14) << "Before starting send threads";
-  for (int idx = 0; idx < thread_count; ++idx) {
+  for (int idx = 0; idx < num_sending_threads; ++idx) {
     threads[idx] = std::thread(send_proc, idx);
   }
   TLOG_DEBUG(14) << "After starting send threads";
-  for (int idx = 0; idx < thread_count; ++idx) {
+  for (int idx = 0; idx < num_sending_threads; ++idx) {
     threads[idx].join();
   }
 
