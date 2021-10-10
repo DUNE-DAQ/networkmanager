@@ -7,7 +7,7 @@
  */
 
 #include "networkmanager/NetworkManager.hpp"
-#include "networkmanager/networkmanager/Structs.hpp"
+#include "networkmanager/nwmgr/Structs.hpp"
 
 #include "logging/Logging.hpp"
 
@@ -26,12 +26,12 @@ struct NetworkManagerSubscriberTestFixture
 {
   NetworkManagerSubscriberTestFixture()
   {
-    networkmanager::Conf testConfig;
-    networkmanager::Connection testConn;
+    nwmgr::Connections testConfig;
+    nwmgr::Connection testConn;
     testConn.name = "foo";
     testConn.address = "inproc://bar";
-    testConn.type = networkmanager::Type::Subscriber;
-    testConfig.connections.push_back(testConn);
+    testConn.type = nwmgr::Type::Subscriber;
+    testConfig.push_back(testConn);
     NetworkManager::get().configure(testConfig);
   }
   ~NetworkManagerSubscriberTestFixture() { NetworkManager::get().reset(); }
@@ -41,12 +41,12 @@ struct NetworkManagerReceiverTestFixture
 {
   NetworkManagerReceiverTestFixture()
   {
-    networkmanager::Conf testConfig;
-    networkmanager::Connection testConn;
+    nwmgr::Connections testConfig;
+    nwmgr::Connection testConn;
     testConn.name = "foo";
     testConn.address = "inproc://bar";
-    testConn.type = networkmanager::Type::Receiver;
-    testConfig.connections.push_back(testConn);
+    testConn.type = nwmgr::Type::Receiver;
+    testConfig.push_back(testConn);
     NetworkManager::get().configure(testConfig);
   }
   ~NetworkManagerReceiverTestFixture() { NetworkManager::get().reset(); }
@@ -75,12 +75,12 @@ BOOST_FIXTURE_TEST_CASE(FakeConfigure, NetworkManagerReceiverTestFixture)
                           ConnectionNotFound,
                           [&](ConnectionNotFound const&) { return true; });
 
-  networkmanager::Conf testConfig;
-  networkmanager::Connection testConn;
+  nwmgr::Connections testConfig;
+  nwmgr::Connection testConn;
   testConn.name = "oof";
   testConn.address = "inproc://rab";
-  testConn.type = networkmanager::Type::Receiver;
-  testConfig.connections.push_back(testConn);
+  testConn.type = nwmgr::Type::Receiver;
+  testConfig.push_back(testConn);
   BOOST_REQUIRE_EXCEPTION(NetworkManager::get().configure(testConfig),
                           NetworkManagerAlreadyConfigured,
                           [&](NetworkManagerAlreadyConfigured const&) { return true; });

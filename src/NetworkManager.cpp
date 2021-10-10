@@ -32,7 +32,7 @@ NetworkManager::start_listening(std::string const& connection_name,
     throw ConnectionNotFound(ERS_HERE, connection_name);
   }
 
-  if (m_connection_map[connection_name].type == networkmanager::Type::Subscriber) {
+  if (m_connection_map[connection_name].type == nwmgr::Type::Subscriber) {
     throw ConnectionTypeMismatch(ERS_HERE, connection_name, "Subscriber", "add_subscriber");
   }
 
@@ -67,7 +67,7 @@ NetworkManager::add_subscriber(std::string const& connection_name,
     throw ConnectionNotFound(ERS_HERE, connection_name);
   }
 
-  if (m_connection_map[connection_name].type == networkmanager::Type::Receiver) {
+  if (m_connection_map[connection_name].type == nwmgr::Type::Receiver) {
     throw ConnectionTypeMismatch(ERS_HERE, connection_name, "Receiver", "add_listener");
   }
 
@@ -102,13 +102,13 @@ NetworkManager::remove_subscriber(std::string const& connection_name, std::strin
 }
 
 void
-NetworkManager::configure(networkmanager::Conf configuration)
+NetworkManager::configure(const nwmgr::Connections& connections)
 {
   if (!m_connection_map.empty()) {
     throw NetworkManagerAlreadyConfigured(ERS_HERE);
   }
 
-  for (auto& connection : configuration.connections) {
+  for (auto& connection : connections) {
     m_connection_map[connection.name] = connection;
   }
 }
@@ -187,7 +187,7 @@ NetworkManager::receive_from(std::string const& connection_name,
     create_receiver(connection_name);
   }
 
-  auto is_subscriber = topic != "" && m_connection_map[connection_name].type == networkmanager::Type::Subscriber;
+  auto is_subscriber = topic != "" && m_connection_map[connection_name].type == nwmgr::Type::Subscriber;
   if (topic != "" && !is_subscriber) {
     throw ConnectionTypeMismatch(ERS_HERE, connection_name, "Receiver", "receive_from without a topic");
   }
@@ -240,7 +240,7 @@ NetworkManager::create_receiver(std::string const& connection_name)
     return;
 
   auto plugin_type =
-    m_connection_map[connection_name].type == networkmanager::Type::Receiver ? "ZmqReceiver" : "ZmqSubscriber";
+    m_connection_map[connection_name].type == nwmgr::Type::Receiver ? "ZmqReceiver" : "ZmqSubscriber";
 
   m_receiver_plugins[connection_name] = dunedaq::ipm::make_ipm_receiver(plugin_type);
   try {
@@ -264,7 +264,7 @@ NetworkManager::create_sender(std::string const& connection_name)
 
   TLOG_DEBUG(11) << "Creating sender plugin for connection " << connection_name;
   auto plugin_type =
-    m_connection_map[connection_name].type == networkmanager::Type::Receiver ? "ZmqSender" : "ZmqPublisher";
+    m_connection_map[connection_name].type == nwmgr::Type::Receiver ? "ZmqSender" : "ZmqPublisher";
 
   m_sender_plugins[connection_name] = dunedaq::ipm::make_ipm_sender(plugin_type);
   TLOG_DEBUG(11) << "Connecting sender plugin for connection " << connection_name;

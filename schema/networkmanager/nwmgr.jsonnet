@@ -3,7 +3,7 @@
 local moo = import "moo.jsonnet";
 
 // A schema builder in the given path (namespace)
-local s = moo.oschema.schema("dunedaq.networkmanager.networkmanager");
+local s = moo.oschema.schema("dunedaq.networkmanager.nwmgr");
 
 // Object structure used by NetworkManager
 local nm = {
@@ -21,10 +21,10 @@ local nm = {
 
   connections: s.sequence("Connections", self.conninfo, doc="List of connection information objects"),
   
-  conf: s.record("Conf",  [
-    s.field("connections", self.connections, [],
-      doc="List of connection information objects")
-   ], doc="NetworkManager Configuration"),
+//  conf: s.record("Conf",  [
+//    s.field("connections", self.connections, [],
+//      doc="List of connection information objects")
+//   ], doc="NetworkManager Configuration"),
   
 };
 
