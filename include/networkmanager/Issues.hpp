@@ -13,14 +13,13 @@
 #include <string>
 
 namespace dunedaq {
-
-ERS_DECLARE_ISSUE(networkmanager,
-                  OperationFailed,
-                  "pippo" << mymsg,
-                  ((std::string) mymsg))
-
 	
 // Disable coverage collection LCOV_EXCL_START
+ERS_DECLARE_ISSUE(networkmanager,
+                  OperationFailed,
+                  message,
+                  ((std::string)message))
+
 ERS_DECLARE_ISSUE(networkmanager, ConnectionNotFound, "Connection named " << name << " not found!", ((std::string)name))
 ERS_DECLARE_ISSUE(networkmanager,
                   ConnectionAlreadyOpen,
