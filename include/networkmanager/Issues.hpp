@@ -8,18 +8,20 @@
 #ifndef NETWORKMANAGER_INCLUDE_NETWORKMANAGER_ISSUES_HPP_
 #define NETWORKMANAGER_INCLUDE_NETWORKMANAGER_ISSUES_HPP_
 
-#include "ers/Issue.hpp"
+#include <ers/Issue.hpp>
 
 #include <string>
 
 namespace dunedaq {
-	
+
 // Disable coverage collection LCOV_EXCL_START
+
 ERS_DECLARE_ISSUE(networkmanager,
                   OperationFailed,
                   message,
                   ((std::string)message))
 
+	
 ERS_DECLARE_ISSUE(networkmanager, ConnectionNotFound, "Connection named " << name << " not found!", ((std::string)name))
 ERS_DECLARE_ISSUE(networkmanager,
                   ConnectionAlreadyOpen,
