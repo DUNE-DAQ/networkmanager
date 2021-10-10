@@ -376,13 +376,13 @@ BOOST_AUTO_TEST_CASE(ManyThreadsSendingAndReceiving)
   const int num_sending_threads = 100;
   const int num_receivers = 50;
 
-  networkmanager::Conf testConfig;
+  nwmgr::Connections testConfig;
   for (int i = 0; i < num_receivers; ++i) {
-    networkmanager::Connection testConn;
+    nwmgr::Connection testConn;
     testConn.name = "foo" + std::to_string(i);
     testConn.address = "inproc://bar" + std::to_string(i);
-    testConn.type = networkmanager::Type::Receiver;
-    testConfig.connections.push_back(testConn);
+    testConn.type = nwmgr::Type::Receiver;
+    testConfig.push_back(testConn);
   }
   NetworkManager::get().configure(testConfig);
 
