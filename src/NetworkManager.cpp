@@ -27,6 +27,7 @@ void
 NetworkManager::start_listening(std::string const& connection_name,
                                 std::function<void(ipm::Receiver::Response)> callback)
 {
+  TLOG_DEBUG(5) << "Start listening on connection_name " << connection_name;
   std::lock_guard<std::mutex> lk(m_registration_mutex);
   if (!m_connection_map.count(connection_name)) {
     throw ConnectionNotFound(ERS_HERE, connection_name);
@@ -49,6 +50,7 @@ NetworkManager::start_listening(std::string const& connection_name,
 void
 NetworkManager::stop_listening(std::string const& connection_name)
 {
+  TLOG_DEBUG(5) << "Stop listening on connection_name " << connection_name;
   std::lock_guard<std::mutex> lk(m_registration_mutex);
   if (!is_listening(connection_name)) {
     throw ListenerNotRegistered(ERS_HERE, connection_name);
@@ -62,6 +64,7 @@ NetworkManager::add_subscriber(std::string const& connection_name,
                                std::string const& topic,
                                std::function<void(ipm::Receiver::Response)> callback)
 {
+  TLOG_DEBUG(5) << "Adding subscription on connection_name " << connection_name << ", topic " << topic;
   std::lock_guard<std::mutex> lk(m_registration_mutex);
   if (!m_connection_map.count(connection_name)) {
     throw ConnectionNotFound(ERS_HERE, connection_name);
@@ -91,6 +94,7 @@ NetworkManager::add_subscriber(std::string const& connection_name,
 void
 NetworkManager::remove_subscriber(std::string const& connection_name, std::string const& topic)
 {
+  TLOG_DEBUG(5) << "Removing subscription on connection_name " << connection_name << ", topic " << topic;
   std::lock_guard<std::mutex> lk(m_registration_mutex);
   if (!has_subscriber(connection_name, topic)) {
     throw SubscriberNotRegistered(ERS_HERE, connection_name, topic);
