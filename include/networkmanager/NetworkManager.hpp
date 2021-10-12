@@ -66,6 +66,7 @@ public:
   void reset();
 
   std::string get_connection_string(std::string const& connection_name) const;
+  bool is_subscriber(std::string const& connection_name) const;
 
   bool is_connection_open(std::string const& connection_name,
                           ConnectionDirection direction = ConnectionDirection::Recv) const;

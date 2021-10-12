@@ -7,6 +7,7 @@
  */
 
 #include "networkmanager/NetworkManager.hpp"
+#include "ipm/PluginInfo.hpp"
 #include "ipm/Subscriber.hpp"
 #include "logging/Logging.hpp"
 
@@ -146,6 +147,16 @@ NetworkManager::get_connection_string(std::string const& connection_name) const
 }
 
 bool
+NetworkManager::is_subscriber(std::string const& connection_name) const
+{
+  if (!m_connection_map.count(connection_name)) {
+    throw ConnectionNotFound(ERS_HERE, connection_name);
+  }
+
+  return m_connection_map.at(connection_name).type != nwmgr::Type::Receiver;
+}
+
+bool
 NetworkManager::is_connection_open(std::string const& connection_name,
                                    NetworkManager::ConnectionDirection direction) const
 {
@@ -243,8 +254,8 @@ NetworkManager::create_receiver(std::string const& connection_name)
   if (m_receiver_plugins.count(connection_name))
     return;
 
-  auto plugin_type =
-    m_connection_map[connection_name].type == nwmgr::Type::Receiver ? "ZmqReceiver" : "ZmqSubscriber";
+  auto plugin_type = ipm::get_recommended_plugin_name(is_subscriber(connection_name) ? ipm::IpmPluginType::Subscriber
+                                                                                     : ipm::IpmPluginType::Receiver);
 
   m_receiver_plugins[connection_name] = dunedaq::ipm::make_ipm_receiver(plugin_type);
   try {
@@ -267,8 +278,8 @@ NetworkManager::create_sender(std::string const& connection_name)
     return;
 
   TLOG_DEBUG(11) << "Creating sender plugin for connection " << connection_name;
-  auto plugin_type =
-    m_connection_map[connection_name].type == nwmgr::Type::Receiver ? "ZmqSender" : "ZmqPublisher";
+  auto plugin_type = ipm::get_recommended_plugin_name(is_subscriber(connection_name) ? ipm::IpmPluginType::Publisher
+                                                                                     : ipm::IpmPluginType::Sender);
 
   m_sender_plugins[connection_name] = dunedaq::ipm::make_ipm_sender(plugin_type);
   TLOG_DEBUG(11) << "Connecting sender plugin for connection " << connection_name;
