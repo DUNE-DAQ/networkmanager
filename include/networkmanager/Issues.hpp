@@ -16,53 +16,29 @@ namespace dunedaq {
 
 // Disable coverage collection LCOV_EXCL_START
 
-ERS_DECLARE_ISSUE(networkmanager,
-                  OperationFailed,
-                  message,
-                  ((std::string)message))
+ERS_DECLARE_ISSUE(networkmanager, OperationFailed, message, ((std::string)message))
 
-	
-ERS_DECLARE_ISSUE(networkmanager, ConnectionNotFound, "Connection named " << name << " not found!", ((std::string)name))
+ERS_DECLARE_ISSUE(networkmanager, ConnectionNotFound, "Connection named " << name << " not found", ((std::string)name))
+ERS_DECLARE_ISSUE(networkmanager, TopicNotFound, "Topic named " << name << " not found for connection " << connection, ((std::string)name)((std::string)connection))
+ERS_DECLARE_ISSUE(networkmanager, NameCollision, "Multiple instances of name " << name << " exist", ((std::string)name))
+
 ERS_DECLARE_ISSUE(networkmanager,
                   ConnectionAlreadyOpen,
-                  "Connection named " << name << " has already been opened for " << direction << "!",
+                  "Connection named " << name << " has already been opened for " << direction,
                   ((std::string)name)((std::string)direction))
 ERS_DECLARE_ISSUE(networkmanager,
                   ConnectionNotOpen,
-                  "Connection named " << name << " is not open for " << direction << "!",
+                  "Connection named " << name << " is not open for " << direction,
                   ((std::string)name)((std::string)direction))
-ERS_DECLARE_ISSUE(networkmanager, NetworkManagerAlreadyConfigured, "The NetworkManager has already been configured!", )
+ERS_DECLARE_ISSUE(networkmanager, NetworkManagerAlreadyConfigured, "The NetworkManager has already been configured", )
 ERS_DECLARE_ISSUE(networkmanager,
                   ListenerAlreadyRegistered,
-                  "A listener callback has already been registered for connection_name " << connection_name,
-                  ((std::string)connection_name))
+                  "A listener callback has already been registered for name " << name,
+                  ((std::string)name))
 ERS_DECLARE_ISSUE(networkmanager,
                   ListenerNotRegistered,
-                  "No listener has been registered with connection_name " << connection_name,
-                  ((std::string)connection_name))
-ERS_DECLARE_ISSUE(networkmanager,
-                  SubscriberAlreadyRegistered,
-                  "A subscriber callback has already been registered for connection_name " << connection_name
-                                                                                           << ", topic " << topic,
-                  ((std::string)connection_name)((std::string)topic))
-ERS_DECLARE_ISSUE(networkmanager,
-                  SubscriberNotRegistered,
-                  "No subscriber has been registered with connection_name " << connection_name << ", topic " << topic,
-                  ((std::string)connection_name)((std::string)topic))
-ERS_DECLARE_ISSUE(networkmanager,
-                  ConnectionTypeMismatch,
-                  "Connection named " << connection_name << " is type " << type << ", use " << func << " instead",
-                  ((std::string)connection_name)((std::string)type)((std::string)func))
-
-ERS_DECLARE_ISSUE(networkmanager,
-                  CallbackAlreadyRegistered,
-                  "A callback has already been registered for connection_name " << connection_name << ", topic "
-                                                                                << topic,
-                  ((std::string)connection_name)((std::string)topic))
-ERS_DECLARE_ISSUE(networkmanager,
-                  CallbackNotRegistered,
-                  "No callback has been registered with connection_name " << connection_name << ", topic " << topic,
-                  ((std::string)connection_name)((std::string)topic))
+                  "No listener has been registered with name " << name,
+                  ((std::string)name))
 // Reenable coverage collection LCOV_EXCL_STOP
 } // namespace dunedaq
 

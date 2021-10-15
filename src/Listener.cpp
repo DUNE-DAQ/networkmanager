@@ -53,7 +53,6 @@ Listener::stop_listening()
 void
 Listener::startup()
 {
-  m_is_listening = true;
   m_listener_thread.reset(new std::thread([&] { listener_thread_loop(); }));
 }
 
@@ -69,15 +68,15 @@ Listener::shutdown()
 void
 Listener::listener_thread_loop()
 {
+  m_is_listening = true;
   while (m_is_listening) {
     try {
-      auto response = NetworkManager::get().receive_from(m_connection_name, ipm::Receiver::s_no_block);
+      auto response = NetworkManager::get().receive_from(m_connection_name, std::chrono::milliseconds(100));
 
       if (m_callback != nullptr) {
         m_callback(response);
       }
     } catch (ipm::ReceiveTimeoutExpired const& tmo) {
-      usleep(1000);
     }
   }
 }
