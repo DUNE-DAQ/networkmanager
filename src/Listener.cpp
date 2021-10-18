@@ -1,10 +1,9 @@
 #include "networkmanager/Listener.hpp"
 #include "networkmanager/NetworkManager.hpp"
 
+#include "logging/Logging.hpp"
+
 namespace dunedaq::networkmanager {
-Listener::Listener(std::string const& connection_name)
-  : m_connection_name(connection_name)
-{}
 
 Listener::~Listener() noexcept
 {
@@ -29,31 +28,42 @@ Listener::operator=(Listener&& other)
 }
 
 void
-Listener::start_listening(std::function<void(ipm::Receiver::Response)> callback)
+Listener::start_listening(std::string const& connection_name)
 {
-  if (m_callback != nullptr) {
-    throw ListenerAlreadyRegistered(ERS_HERE, m_connection_name);
+  if (m_connection_name != "" && connection_name != m_connection_name) {
+    throw OperationFailed(ERS_HERE, "Listener started with different connection name");
   }
-
-  m_callback = callback;
+  m_connection_name = connection_name;
   if (!is_listening())
     startup();
+  else
+    ers::warning(OperationFailed(ERS_HERE, "Listener is already running"));
 }
 
 void
 Listener::stop_listening()
 {
-  if (m_callback == nullptr) {
-    throw ListenerNotRegistered(ERS_HERE, m_connection_name);
-  }
+  if (is_listening())
+    shutdown();
+  else
+    ers::warning(OperationFailed(ERS_HERE, "Listener is not running"));
+}
 
-  shutdown();
+void
+Listener::set_callback(std::function<void(ipm::Receiver::Response)> callback)
+{
+  m_callback = callback;
 }
 
 void
 Listener::startup()
 {
+  shutdown();
   m_listener_thread.reset(new std::thread([&] { listener_thread_loop(); }));
+
+  while (!m_is_listening.load()) {
+    usleep(1000);
+  }
 }
 
 void
@@ -68,17 +78,26 @@ Listener::shutdown()
 void
 Listener::listener_thread_loop()
 {
-  m_is_listening = true;
-  while (m_is_listening) {
+  bool first = true;
+  do {
     try {
-      auto response = NetworkManager::get().receive_from(m_connection_name, std::chrono::milliseconds(100));
+      auto response = NetworkManager::get().receive_from(m_connection_name, ipm::Receiver::s_no_block);
+
+      TLOG_DEBUG(25) << "Received " << response.data.size() << " bytes. Dispatching to callback.";
 
       if (m_callback != nullptr) {
         m_callback(response);
       }
     } catch (ipm::ReceiveTimeoutExpired const& tmo) {
+      usleep(10000);
     }
-  }
+
+    // All initialization complete
+    if (first) {
+      m_is_listening = true;
+      first = false;
+    }
+  } while (m_is_listening.load());
 }
 
 } // namespace dunedaq::networkmanager

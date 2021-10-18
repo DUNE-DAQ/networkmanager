@@ -29,8 +29,7 @@ namespace networkmanager {
 class Listener
 {
 public:
-  Listener() = default; // So that Listener can be used with operator[] in a map
-  explicit Listener(std::string const& connection_name);
+  Listener() = default; // Excplicitly defaulted
 
   virtual ~Listener() noexcept;
   Listener(Listener&&);
@@ -39,9 +38,10 @@ public:
   Listener(Listener const&) = delete;
   Listener& operator=(Listener const&) = delete;
 
-  void start_listening(std::function<void(ipm::Receiver::Response)> callback);
+  void start_listening(std::string const& connection_name);
   void stop_listening();
   void shutdown();
+  void set_callback(std::function<void(ipm::Receiver::Response)> callback);
 
   bool is_listening() const { return m_is_listening.load(); }
 
