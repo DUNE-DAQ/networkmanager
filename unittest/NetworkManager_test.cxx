@@ -506,23 +506,35 @@ BOOST_AUTO_TEST_CASE(ManyThreadsSendingAndReceiving)
   };
 
   std::array<std::atomic<size_t>, num_receivers> messages_received;
+  std::array<std::atomic<size_t>, num_receivers> num_empty_responses;
+  std::array<std::atomic<size_t>, num_receivers> num_size_errors;
+  std::array<std::atomic<size_t>, num_receivers> num_content_errors;
   std::array<std::function<void(dunedaq::ipm::Receiver::Response)>, num_receivers> recv_procs;
 
   for (int i = 0; i < num_receivers; ++i) {
     messages_received[i] = 0;
+    num_empty_responses[i] = 0;
+    num_size_errors[i] = 0;
+    num_content_errors[i] = 0;
     recv_procs[i] = [&,i](dunedaq::ipm::Receiver::Response response) {
-      BOOST_REQUIRE(response.data.size() > 0);
+      if (response.data.size() == 0) {
+        num_empty_responses[i]++;
+      }
       auto received_idx = std::stoi(std::string(response.data.begin(), response.data.end()));
       auto idx_string = std::to_string(received_idx);
       auto received_string = std::string(response.data.begin() + idx_string.size(), response.data.end());
 
       TLOG_DEBUG(14) << "Receiver " << i << " received " << received_string << " for idx " << received_idx;
 
-      BOOST_REQUIRE_EQUAL(received_string.size(), 5);
+      if (received_string.size() != 5) {
+        num_size_errors[i]++;
+      }
 
       std::string check = substr_proc(received_idx);
 
-      BOOST_REQUIRE_EQUAL(received_string, check);
+      if (received_string != check) {
+        num_content_errors[i]++;
+      }
       messages_received[i]++;
     };
     NetworkManager::get().start_listening("foo" + std::to_string(i));
@@ -547,6 +559,9 @@ BOOST_AUTO_TEST_CASE(ManyThreadsSendingAndReceiving)
     TLOG_DEBUG(14) << "Shutting down receiver " << i;
     NetworkManager::get().stop_listening("foo" + std::to_string(i));
     BOOST_CHECK_EQUAL(messages_received[i], num_sending_threads);
+    BOOST_REQUIRE_EQUAL(num_empty_responses[i], 0);
+    BOOST_REQUIRE_EQUAL(num_size_errors[i], 0);
+    BOOST_REQUIRE_EQUAL(num_content_errors[i], 0);
   }
 
   TLOG_DEBUG(14) << "Resetting NetworkManager";

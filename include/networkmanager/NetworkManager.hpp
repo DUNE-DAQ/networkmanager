@@ -92,6 +92,8 @@ private:
 
   std::unique_lock<std::mutex> get_connection_lock(std::string const& connection_name) const;
   mutable std::unordered_map<std::string, std::mutex> m_connection_mutexes;
+  std::mutex m_receiver_plugin_map_mutex;
+  std::mutex m_sender_plugin_map_mutex;
   std::mutex m_registration_mutex;
 };
 } // namespace networkmanager

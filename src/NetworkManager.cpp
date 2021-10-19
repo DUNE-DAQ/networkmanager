@@ -64,8 +64,14 @@ NetworkManager::reset()
     listener_pair.second.shutdown();
   }
   m_registered_listeners.clear();
-  m_sender_plugins.clear();
-  m_receiver_plugins.clear();
+  {
+    std::lock_guard<std::mutex> lk(m_sender_plugin_map_mutex);
+    m_sender_plugins.clear();
+  }
+  {
+    std::lock_guard<std::mutex> lk(m_receiver_plugin_map_mutex);
+    m_receiver_plugins.clear();
+  }
   m_topic_map.clear();
   m_connection_map.clear();
   m_connection_mutexes.clear();
@@ -92,7 +98,7 @@ NetworkManager::start_listening(std::string const& connection_or_topic)
 }
 
 void
-NetworkManager::stop_listening(std::string const& connection_or_topic) 
+NetworkManager::stop_listening(std::string const& connection_or_topic)
 {
   TLOG_DEBUG(5) << "Stop listening on connection or topic " << connection_or_topic;
   std::lock_guard<std::mutex> lk(m_registration_mutex);
@@ -105,7 +111,7 @@ NetworkManager::stop_listening(std::string const& connection_or_topic)
 
 void
 NetworkManager::register_callback(std::string const& connection_or_topic,
-                                std::function<void(ipm::Receiver::Response)> callback) 
+                                  std::function<void(ipm::Receiver::Response)> callback)
 {
   TLOG_DEBUG(5) << "Registering callback on connection or topic " << connection_or_topic;
   std::lock_guard<std::mutex> lk(m_registration_mutex);
@@ -123,7 +129,6 @@ NetworkManager::register_callback(std::string const& connection_or_topic,
 
   m_registered_listeners[connection_or_topic].set_callback(callback);
 }
-
 
 void
 NetworkManager::start_publisher(std::string const& connection_name)
@@ -177,7 +182,12 @@ NetworkManager::send_to(std::string const& connection_name,
   }
 
   TLOG_DEBUG(10) << "Sending message";
-  m_sender_plugins[connection_name]->send(buffer, size, timeout, topic);
+  std::shared_ptr<ipm::Sender> sender_ptr;
+  {
+    std::lock_guard<std::mutex> lk(m_sender_plugin_map_mutex);
+    sender_ptr = m_sender_plugins[connection_name];
+  }
+  sender_ptr->send(buffer, size, timeout, topic);
 }
 
 ipm::Receiver::Response
@@ -195,7 +205,13 @@ NetworkManager::receive_from(std::string const& connection_or_topic, ipm::Receiv
   }
 
   TLOG_DEBUG(9) << "Calling receive on connection or topic " << connection_or_topic;
-  auto res = m_receiver_plugins[connection_or_topic]->receive(timeout);
+
+  std::shared_ptr<ipm::Receiver> receiver_ptr;
+  {
+    std::lock_guard<std::mutex> lk(m_receiver_plugin_map_mutex);
+    receiver_ptr = m_receiver_plugins[connection_or_topic];
+  }
+  auto res = receiver_ptr->receive(timeout);
 
   TLOG_DEBUG(9) << "END";
   return res;
@@ -289,16 +305,14 @@ void
 NetworkManager::create_receiver(std::string const& connection_or_topic)
 {
   TLOG_DEBUG(12) << "START";
-  static std::mutex receiver_create_mutex;
-  std::lock_guard<std::mutex> lk(receiver_create_mutex);
+  std::lock_guard<std::mutex> lk(m_receiver_plugin_map_mutex);
   if (m_receiver_plugins.count(connection_or_topic))
     return;
 
   auto plugin_type = ipm::get_recommended_plugin_name(is_topic(connection_or_topic) ? ipm::IpmPluginType::Subscriber
                                                                                     : ipm::IpmPluginType::Receiver);
 
-  TLOG_DEBUG(12) << "Creating plugin for connection or topic " << connection_or_topic << " of type "
-         << plugin_type;
+  TLOG_DEBUG(12) << "Creating plugin for connection or topic " << connection_or_topic << " of type " << plugin_type;
   m_receiver_plugins[connection_or_topic] = dunedaq::ipm::make_ipm_receiver(plugin_type);
   try {
     nlohmann::json config_json;
@@ -326,15 +340,13 @@ void
 NetworkManager::create_sender(std::string const& connection_name)
 {
   TLOG_DEBUG(11) << "Getting create mutex";
-  static std::mutex sender_create_mutex;
-  std::lock_guard<std::mutex> lk(sender_create_mutex);
+  std::lock_guard<std::mutex> lk(m_sender_plugin_map_mutex);
   TLOG_DEBUG(11) << "Checking plugin list";
   if (m_sender_plugins.count(connection_name))
     return;
 
   auto plugin_type = ipm::get_recommended_plugin_name(
-    is_pubsub_connection(connection_name) ? ipm::IpmPluginType::Publisher
-                                                                                     : ipm::IpmPluginType::Sender);
+    is_pubsub_connection(connection_name) ? ipm::IpmPluginType::Publisher : ipm::IpmPluginType::Sender);
 
   TLOG_DEBUG(11) << "Creating sender plugin for connection " << connection_name << " of type " << plugin_type;
   m_sender_plugins[connection_name] = dunedaq::ipm::make_ipm_sender(plugin_type);
