@@ -81,8 +81,8 @@ BOOST_FIXTURE_TEST_CASE(FakeConfigure, NetworkManagerTestFixture)
                           ConnectionNotFound,
                           [&](ConnectionNotFound const&) { return true; });
   BOOST_REQUIRE_EXCEPTION(NetworkManager::get().get_connection_strings("foo"),
-                          ConnectionNotFound,
-                          [&](ConnectionNotFound const&) { return true; });
+                          TopicNotFound,
+                          [&](TopicNotFound const&) { return true; });
 
   BOOST_REQUIRE(NetworkManager::get().is_connection("foo"));
   BOOST_REQUIRE(NetworkManager::get().is_connection("bar"));
@@ -221,19 +221,19 @@ BOOST_FIXTURE_TEST_CASE(StartPublisher, NetworkManagerTestFixture)
 BOOST_FIXTURE_TEST_CASE(Subscriber, NetworkManagerTestFixture)
 {
   BOOST_REQUIRE(!NetworkManager::get().is_listening("baz"));
-  NetworkManager::get().start_listening("baz");
+  NetworkManager::get().subscribe("baz");
   BOOST_REQUIRE(NetworkManager::get().is_listening("baz"));
 
   BOOST_REQUIRE(!NetworkManager::get().is_listening("bar"));
 
-  BOOST_REQUIRE_EXCEPTION(NetworkManager::get().start_listening("baz"),
+  BOOST_REQUIRE_EXCEPTION(NetworkManager::get().subscribe("baz"),
                           ListenerAlreadyRegistered,
                           [&](ListenerAlreadyRegistered const&) { return true; });
 
-  NetworkManager::get().start_listening("bax");
+  NetworkManager::get().subscribe("bax");
   BOOST_REQUIRE(NetworkManager::get().is_listening("bax"));
 
-  NetworkManager::get().stop_listening("bax");
+  NetworkManager::get().unsubscribe("bax");
   BOOST_REQUIRE(!NetworkManager::get().is_listening("bax"));
   BOOST_REQUIRE(NetworkManager::get().is_listening("baz"));
 
@@ -243,17 +243,16 @@ BOOST_FIXTURE_TEST_CASE(Subscriber, NetworkManagerTestFixture)
                           [&](ListenerNotRegistered const&) { return true; });
   BOOST_REQUIRE(!NetworkManager::get().is_listening("bax"));
 
-  NetworkManager::get().start_listening("bax");
+  NetworkManager::get().subscribe("bax");
   BOOST_REQUIRE(NetworkManager::get().is_listening("bax"));
 
   BOOST_REQUIRE(!NetworkManager::get().is_listening("bay"));
 
-  BOOST_REQUIRE_EXCEPTION(NetworkManager::get().start_listening("unknown_topic"),
-                          ConnectionNotFound,
-                          [&](ConnectionNotFound const&) { return true; });
+  BOOST_REQUIRE_EXCEPTION(NetworkManager::get().subscribe("unknown_topic"),
+                          TopicNotFound, [&](TopicNotFound const&) { return true; });
   BOOST_REQUIRE(!NetworkManager::get().is_listening("unknown_topic"));
 
-  BOOST_REQUIRE_EXCEPTION(NetworkManager::get().stop_listening("unknown_topic"),
+  BOOST_REQUIRE_EXCEPTION(NetworkManager::get().unsubscribe("unknown_topic"),
                           ListenerNotRegistered,
                           [&](ListenerNotRegistered const&) { return true; });
 }
@@ -324,7 +323,7 @@ BOOST_FIXTURE_TEST_CASE(Publish, NetworkManagerTestFixture)
   std::function<void(dunedaq::ipm::Receiver::Response)> callback = [&](dunedaq::ipm::Receiver::Response response) {
     received_string = std::string(response.data.begin(), response.data.end());
   };
-  NetworkManager::get().start_listening("baz");
+  NetworkManager::get().subscribe("baz");
 
   BOOST_REQUIRE(NetworkManager::get().is_listening("baz"));
   BOOST_REQUIRE(NetworkManager::get().is_connection_open("baz"));
@@ -366,7 +365,7 @@ BOOST_FIXTURE_TEST_CASE(Publish, NetworkManagerTestFixture)
   std::function<void(dunedaq::ipm::Receiver::Response)> callback2 = [&](dunedaq::ipm::Receiver::Response response) {
     received_string2 = std::string(response.data.begin(), response.data.end());
   };
-  NetworkManager::get().start_listening("bax");
+  NetworkManager::get().subscribe("bax");
   NetworkManager::get().register_callback("bax", callback2);
 
   sent_string = "this is a third test string";

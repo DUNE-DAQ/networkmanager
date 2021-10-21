@@ -19,7 +19,11 @@ namespace dunedaq {
 ERS_DECLARE_ISSUE(networkmanager, OperationFailed, message, ((std::string)message))
 
 ERS_DECLARE_ISSUE(networkmanager, ConnectionNotFound, "Connection named " << name << " not found", ((std::string)name))
-ERS_DECLARE_ISSUE(networkmanager, TopicNotFound, "Topic named " << name << " not found for connection " << connection, ((std::string)name)((std::string)connection))
+ERS_DECLARE_ISSUE(networkmanager, TopicNotFound, "Topic named " << name << " not found", ((std::string)name))
+ERS_DECLARE_ISSUE(networkmanager,
+                  ConnectionTopicNotFound,
+                  "Topic named " << name << " not found for connection " << connection,
+                  ((std::string)name)((std::string)connection))
 ERS_DECLARE_ISSUE(networkmanager, NameCollision, "Multiple instances of name " << name << " exist", ((std::string)name))
 
 ERS_DECLARE_ISSUE(networkmanager,

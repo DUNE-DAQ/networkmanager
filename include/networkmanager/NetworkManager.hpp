@@ -46,9 +46,12 @@ public:
   void reset();
 
   // Receive via callback
-  void start_listening(std::string const& connection_or_topic);
-  void stop_listening(std::string const& connection_or_topic);
+  void start_listening(std::string const& connection_name);
+  void stop_listening(std::string const& connection_name);
   void register_callback(std::string const& connection_or_topic, std::function<void(ipm::Receiver::Response)> callback);
+  void clear_callback(std::string const& connection_or_topic);
+  void subscribe(std::string const& topic);
+  void unsubscribe(std::string const& topic);
 
   // Direct Send/Receive
   void start_publisher(std::string const& connection_name);

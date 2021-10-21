@@ -78,35 +78,35 @@ NetworkManager::reset()
 }
 
 void
-NetworkManager::start_listening(std::string const& connection_or_topic)
+NetworkManager::start_listening(std::string const& connection_name)
 {
-  TLOG_DEBUG(5) << "Start listening on connection or topic " << connection_or_topic;
+  TLOG_DEBUG(5) << "Start listening on connection " << connection_name;
   std::lock_guard<std::mutex> lk(m_registration_mutex);
-  if (!m_connection_map.count(connection_or_topic) && !m_topic_map.count(connection_or_topic)) {
-    throw ConnectionNotFound(ERS_HERE, connection_or_topic);
+  if (!m_connection_map.count(connection_name)) {
+    throw ConnectionNotFound(ERS_HERE, connection_name);
   }
 
-  if (is_pubsub_connection(connection_or_topic)) {
+  if (is_pubsub_connection(connection_name)) {
     throw OperationFailed(ERS_HERE, "Connection is pub/sub type, call start_listening on desired topic(s) instead!");
   }
 
-  if (is_listening(connection_or_topic)) {
-    throw ListenerAlreadyRegistered(ERS_HERE, connection_or_topic);
+  if (is_listening(connection_name)) {
+    throw ListenerAlreadyRegistered(ERS_HERE, connection_name);
   }
 
-  m_registered_listeners[connection_or_topic].start_listening(connection_or_topic);
+  m_registered_listeners[connection_name].start_listening(connection_name);
 }
 
 void
-NetworkManager::stop_listening(std::string const& connection_or_topic)
+NetworkManager::stop_listening(std::string const& connection_name)
 {
-  TLOG_DEBUG(5) << "Stop listening on connection or topic " << connection_or_topic;
+  TLOG_DEBUG(5) << "Stop listening on connection " << connection_name;
   std::lock_guard<std::mutex> lk(m_registration_mutex);
-  if (!is_listening(connection_or_topic)) {
-    throw ListenerNotRegistered(ERS_HERE, connection_or_topic);
+  if (!is_listening(connection_name)) {
+    throw ListenerNotRegistered(ERS_HERE, connection_name);
   }
 
-  m_registered_listeners[connection_or_topic].stop_listening();
+  m_registered_listeners[connection_name].stop_listening();
 }
 
 void
@@ -128,6 +128,41 @@ NetworkManager::register_callback(std::string const& connection_or_topic,
   }
 
   m_registered_listeners[connection_or_topic].set_callback(callback);
+}
+
+void
+NetworkManager::clear_callback(std::string const& connection_or_topic)
+{
+  TLOG_DEBUG(5) << "Setting callback on " << connection_or_topic << " to null";
+  register_callback(connection_or_topic, nullptr);
+}
+
+void
+NetworkManager::subscribe(std::string const& topic)
+{
+  TLOG_DEBUG(5) << "Start listening on topic " << topic;
+  std::lock_guard<std::mutex> lk(m_registration_mutex);
+  if (!m_topic_map.count(topic)) {
+    throw TopicNotFound(ERS_HERE, topic);
+  }
+
+  if (is_listening(topic)) {
+    throw ListenerAlreadyRegistered(ERS_HERE, topic);
+  }
+
+  m_registered_listeners[topic].start_listening(topic);
+}
+
+void
+NetworkManager::unsubscribe(std::string const& topic)
+{
+  TLOG_DEBUG(5) << "Stop listening on topic " << topic;
+  std::lock_guard<std::mutex> lk(m_registration_mutex);
+  if (!is_listening(topic)) {
+    throw ListenerNotRegistered(ERS_HERE, topic);
+  }
+
+  m_registered_listeners[topic].stop_listening();
 }
 
 void
@@ -172,7 +207,7 @@ NetworkManager::send_to(std::string const& connection_name,
       }
     }
     if (!match) {
-      ers::warning(TopicNotFound(ERS_HERE, topic, connection_name));
+      ers::warning(ConnectionTopicNotFound(ERS_HERE, topic, connection_name));
     }
   }
 
@@ -196,7 +231,7 @@ NetworkManager::receive_from(std::string const& connection_or_topic, ipm::Receiv
   TLOG_DEBUG(9) << "START";
 
   if (!m_connection_map.count(connection_or_topic) && !m_topic_map.count(connection_or_topic)) {
-    throw ConnectionNotFound(ERS_HERE, connection_or_topic);
+      throw ConnectionNotFound(ERS_HERE, connection_or_topic);
   }
 
   if (!m_receiver_plugins.count(connection_or_topic)) {
@@ -231,7 +266,7 @@ std::vector<std::string>
 NetworkManager::get_connection_strings(std::string const& topic) const
 {
   if (!m_topic_map.count(topic)) {
-    throw ConnectionNotFound(ERS_HERE, topic);
+    throw TopicNotFound(ERS_HERE, topic);
   }
 
   std::vector<std::string> output;
