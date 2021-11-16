@@ -80,9 +80,8 @@ BOOST_FIXTURE_TEST_CASE(FakeConfigure, NetworkManagerTestFixture)
   BOOST_REQUIRE_EXCEPTION(NetworkManager::get().get_connection_string("blahblah"),
                           ConnectionNotFound,
                           [&](ConnectionNotFound const&) { return true; });
-  BOOST_REQUIRE_EXCEPTION(NetworkManager::get().get_connection_strings("foo"),
-                          TopicNotFound,
-                          [&](TopicNotFound const&) { return true; });
+  BOOST_REQUIRE_EXCEPTION(
+    NetworkManager::get().get_connection_strings("foo"), TopicNotFound, [&](TopicNotFound const&) { return true; });
 
   BOOST_REQUIRE(NetworkManager::get().is_connection("foo"));
   BOOST_REQUIRE(NetworkManager::get().is_connection("bar"));
@@ -248,8 +247,8 @@ BOOST_FIXTURE_TEST_CASE(Subscriber, NetworkManagerTestFixture)
 
   BOOST_REQUIRE(!NetworkManager::get().is_listening("bay"));
 
-  BOOST_REQUIRE_EXCEPTION(NetworkManager::get().subscribe("unknown_topic"),
-                          TopicNotFound, [&](TopicNotFound const&) { return true; });
+  BOOST_REQUIRE_EXCEPTION(
+    NetworkManager::get().subscribe("unknown_topic"), TopicNotFound, [&](TopicNotFound const&) { return true; });
   BOOST_REQUIRE(!NetworkManager::get().is_listening("unknown_topic"));
 
   BOOST_REQUIRE_EXCEPTION(NetworkManager::get().unsubscribe("unknown_topic"),
@@ -515,7 +514,7 @@ BOOST_AUTO_TEST_CASE(ManyThreadsSendingAndReceiving)
     num_empty_responses[i] = 0;
     num_size_errors[i] = 0;
     num_content_errors[i] = 0;
-    recv_procs[i] = [&,i](dunedaq::ipm::Receiver::Response response) {
+    recv_procs[i] = [&, i](dunedaq::ipm::Receiver::Response response) {
       if (response.data.size() == 0) {
         num_empty_responses[i]++;
       }

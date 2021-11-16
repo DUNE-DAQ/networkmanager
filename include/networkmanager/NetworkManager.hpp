@@ -60,8 +60,7 @@ public:
                size_t size,
                ipm::Sender::duration_t timeout,
                std::string const& topic = "");
-  ipm::Receiver::Response receive_from(std::string const& connection_or_topic,
-                                       ipm::Receiver::duration_t timeout);
+  ipm::Receiver::Response receive_from(std::string const& connection_or_topic, ipm::Receiver::duration_t timeout);
 
   std::string get_connection_string(std::string const& connection_name) const;
   std::vector<std::string> get_connection_strings(std::string const& topic) const;

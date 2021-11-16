@@ -231,7 +231,7 @@ NetworkManager::receive_from(std::string const& connection_or_topic, ipm::Receiv
   TLOG_DEBUG(9) << "START";
 
   if (!m_connection_map.count(connection_or_topic) && !m_topic_map.count(connection_or_topic)) {
-      throw ConnectionNotFound(ERS_HERE, connection_or_topic);
+    throw ConnectionNotFound(ERS_HERE, connection_or_topic);
   }
 
   if (!m_receiver_plugins.count(connection_or_topic)) {

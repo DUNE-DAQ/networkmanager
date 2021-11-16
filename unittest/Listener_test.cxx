@@ -147,7 +147,8 @@ BOOST_FIXTURE_TEST_CASE(Callback, NetworkManagerTestFixture)
   TLOG() << "Callback test case END";
 }
 
-BOOST_FIXTURE_TEST_CASE(ResetCallback, NetworkManagerTestFixture) {
+BOOST_FIXTURE_TEST_CASE(ResetCallback, NetworkManagerTestFixture)
+{
 
   TLOG() << "ResetCallback test case BEGIN";
   std::string sent_string;
@@ -181,7 +182,7 @@ BOOST_FIXTURE_TEST_CASE(ResetCallback, NetworkManagerTestFixture) {
 
   BOOST_REQUIRE_EQUAL(received_string, sent_string);
   BOOST_REQUIRE_EQUAL(received_string2, "");
-    
+
   l.set_callback(callback2);
 
   received_string = "";
@@ -194,8 +195,6 @@ BOOST_FIXTURE_TEST_CASE(ResetCallback, NetworkManagerTestFixture) {
 
   BOOST_REQUIRE_EQUAL(received_string, "");
   BOOST_REQUIRE_EQUAL(received_string2, sent_string);
-
-
 
   TLOG() << "ResetCallback test case END";
 }
