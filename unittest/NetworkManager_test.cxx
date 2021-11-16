@@ -50,6 +50,11 @@ struct NetworkManagerTestFixture
     NetworkManager::get().start_publisher("abr");
   }
   ~NetworkManagerTestFixture() { NetworkManager::get().reset(); }
+
+  NetworkManagerTestFixture(NetworkManagerTestFixture const&) = default;
+  NetworkManagerTestFixture(NetworkManagerTestFixture&&) = default;
+  NetworkManagerTestFixture& operator=(NetworkManagerTestFixture const&) = default;
+  NetworkManagerTestFixture& operator=(NetworkManagerTestFixture&&) = default;
 };
 
 BOOST_AUTO_TEST_CASE(CopyAndMoveSemantics)

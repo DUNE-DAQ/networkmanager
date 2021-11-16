@@ -17,6 +17,7 @@
 #include "boost/test/unit_test.hpp"
 
 #include <string>
+#include <utility>
 #include <vector>
 
 using namespace dunedaq::networkmanager;
@@ -47,6 +48,11 @@ struct NetworkManagerTestFixture
     NetworkManager::get().start_publisher("baz");
   }
   ~NetworkManagerTestFixture() { NetworkManager::get().reset(); }
+
+  NetworkManagerTestFixture(NetworkManagerTestFixture const&) = default;
+  NetworkManagerTestFixture(NetworkManagerTestFixture&&) = default;
+  NetworkManagerTestFixture& operator=(NetworkManagerTestFixture const&) = default;
+  NetworkManagerTestFixture& operator=(NetworkManagerTestFixture&&) = default;
 };
 
 BOOST_AUTO_TEST_CASE(CopyAndMoveSemantics)

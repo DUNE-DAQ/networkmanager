@@ -1,7 +1,19 @@
+/**
+ *
+ * @file Listener.cpp NETWORKMANAGER Listener class
+ *
+ * This is part of the DUNE DAQ Application Framework, copyright 2020.
+ * Licensing/copyright details are in the COPYING file that you should have
+ * received with this code.
+ */
+
 #include "networkmanager/Listener.hpp"
 #include "networkmanager/NetworkManager.hpp"
 
 #include "logging/Logging.hpp"
+
+#include <string>
+#include <utility>
 
 namespace dunedaq::networkmanager {
 

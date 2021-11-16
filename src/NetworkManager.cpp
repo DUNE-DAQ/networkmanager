@@ -11,6 +11,10 @@
 #include "ipm/Subscriber.hpp"
 #include "logging/Logging.hpp"
 
+#include <memory>
+#include <string>
+#include <vector>
+
 namespace dunedaq::networkmanager {
 
 std::unique_ptr<NetworkManager> NetworkManager::s_instance = nullptr;
