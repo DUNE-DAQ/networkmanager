@@ -7,7 +7,7 @@ daq_setup_environment()
 
 find_package(ipm REQUIRED)
 find_package(logging REQUIRED)
-find_package(toolbox REQUIRED)
+find_package(utilities REQUIRED)
 
 find_package(ers REQUIRED)
 find_package(nlohmann_json REQUIRED)
@@ -24,7 +24,7 @@ daq_codegen(
 ##############################################################################
 # Main library
 
-daq_add_library(NetworkManager.cpp Listener.cpp LINK_LIBRARIES ipm::ipm toolbox::toolbox logging::logging)
+daq_add_library(NetworkManager.cpp Listener.cpp LINK_LIBRARIES ipm::ipm utilities::utilities logging::logging)
 
 ##############################################################################
 # Unit tests

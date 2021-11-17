@@ -4,7 +4,7 @@
 include(CMakeFindDependencyMacro)
 
 find_dependency(ipm)
-find_dependency(toolbox)
+find_dependency(utilities)
 find_dependency(ers)
 find_dependency(nlohmann_json)
 
