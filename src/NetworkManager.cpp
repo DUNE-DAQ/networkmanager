@@ -348,8 +348,9 @@ NetworkManager::create_receiver(std::string const& connection_or_topic)
   if (m_receiver_plugins.count(connection_or_topic))
     return;
 
-  auto plugin_type = ipm::get_recommended_plugin_name(is_topic(connection_or_topic) ? ipm::IpmPluginType::Subscriber
-                                                                                    : ipm::IpmPluginType::Receiver);
+  auto plugin_type = ipm::get_recommended_plugin_name(
+    is_topic(connection_or_topic) || is_pubsub_connection(connection_or_topic) ? ipm::IpmPluginType::Subscriber
+                                                                               : ipm::IpmPluginType::Receiver);
 
   TLOG_DEBUG(12) << "Creating plugin for connection or topic " << connection_or_topic << " of type " << plugin_type;
   m_receiver_plugins[connection_or_topic] = dunedaq::ipm::make_ipm_receiver(plugin_type);
