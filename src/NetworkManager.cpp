@@ -368,6 +368,14 @@ NetworkManager::create_receiver(std::string const& connection_or_topic)
       subscriber->subscribe(connection_or_topic);
     }
 
+    if (is_pubsub_connection(connection_or_topic)) {
+      TLOG_DEBUG(12) << "Subscribing to topics on " << connection_or_topic << " after connect_for_receives";
+      auto subscriber = std::dynamic_pointer_cast<ipm::Subscriber>(m_receiver_plugins[connection_or_topic]);
+      for (auto& topic : m_connection_map[connection_or_topic].topics) {
+        subscriber->subscribe(topic);
+      }
+    }
+
   } catch (ers::Issue const&) {
     m_receiver_plugins.erase(connection_or_topic);
     throw;
