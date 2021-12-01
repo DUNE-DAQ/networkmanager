@@ -18,6 +18,7 @@ find_package(nlohmann_json REQUIRED)
 
 daq_codegen(
   nwmgr.jsonnet
+  nwmgrinfo.jsonnet
   TEMPLATES Structs.hpp.j2 Nljs.hpp.j2
 )
 
