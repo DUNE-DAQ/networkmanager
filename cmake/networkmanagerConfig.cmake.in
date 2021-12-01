@@ -7,7 +7,6 @@ find_dependency(ipm)
 find_dependency(utilities)
 find_dependency(ers)
 find_dependency(nlohmann_json)
-find_dependency(Boost COMPONENTS unit_test_framework program_options)
 
 # Figure out whether or not this dependency is an installed package or
 # in repo form
