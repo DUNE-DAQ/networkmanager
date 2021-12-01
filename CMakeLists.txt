@@ -23,7 +23,7 @@ daq_codegen( nwmgrinfo.jsonnet DEP_PKGS opmonlib TEMPLATES opmonlib/InfoStructs.
 ##############################################################################
 # Main library
 
-daq_add_library(NetworkManager.cpp Listener.cpp LINK_LIBRARIES ipm::ipm utilities::utilities logging::logging)
+daq_add_library(NetworkManager.cpp Listener.cpp LINK_LIBRARIES ipm::ipm utilities::utilities logging::logging opmonlib::opmonlib)
 
 ##############################################################################
 # Unit tests

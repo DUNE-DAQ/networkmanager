@@ -16,6 +16,7 @@
 
 #include "ipm/Receiver.hpp"
 #include "ipm/Sender.hpp"
+#include "opmonlib/InfoCollector.hpp"
 
 #include <atomic>
 #include <chrono>
@@ -43,6 +44,8 @@ public:
 
   static NetworkManager& get();
 
+
+  void gather_stats(opmonlib::InfoCollector& ci, int /*level*/);
   void configure(const nwmgr::Connections& connections);
   void reset();
 
@@ -92,6 +95,9 @@ private:
   std::unordered_map<std::string, std::shared_ptr<ipm::Receiver>> m_receiver_plugins;
   std::unordered_map<std::string, std::shared_ptr<ipm::Sender>> m_sender_plugins;
   std::unordered_map<std::string, Listener> m_registered_listeners;
+
+  std::unordered_map<std::string, std::atomic<size_t>> m_bytes_received;
+  std::unordered_map<std::string, std::atomic<size_t>> m_bytes_sent;
 
   std::unique_lock<std::mutex> get_connection_lock(std::string const& connection_name) const;
   mutable std::unordered_map<std::string, std::mutex> m_connection_mutexes;

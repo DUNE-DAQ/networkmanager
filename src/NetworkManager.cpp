@@ -7,6 +7,9 @@
  */
 
 #include "networkmanager/NetworkManager.hpp"
+
+#include "networkmanager/nwmgrinfo/InfoNljs.hpp"
+
 #include "ipm/PluginInfo.hpp"
 #include "ipm/Subscriber.hpp"
 #include "logging/Logging.hpp"
@@ -26,6 +29,27 @@ NetworkManager::get()
     s_instance.reset(new NetworkManager());
   }
   return *s_instance;
+}
+
+void
+NetworkManager::gather_stats(opmonlib::InfoCollector& ci, int /*level*/)
+{
+  nwmgrinfo::Info nwminfo;
+
+  for (auto& sent_pair : m_bytes_sent) {
+    nwmgrinfo::entry entry;
+    entry.name = sent_pair.first;
+    entry.bytes = sent_pair.second.exchange(0);
+    nwminfo.sent.push_back(entry);
+  }
+  for (auto& recv_pair : m_bytes_received) {
+    nwmgrinfo::entry entry;
+    entry.name = recv_pair.first;
+    entry.bytes = recv_pair.second.exchange(0);
+    nwminfo.received.push_back(entry);
+  }
+
+  ci.add(nwminfo);
 }
 
 void
@@ -227,6 +251,7 @@ NetworkManager::send_to(std::string const& connection_name,
     sender_ptr = m_sender_plugins[connection_name];
   }
   sender_ptr->send(buffer, size, timeout, topic);
+  m_bytes_sent[connection_name] += size;
 }
 
 ipm::Receiver::Response
@@ -251,6 +276,7 @@ NetworkManager::receive_from(std::string const& connection_or_topic, ipm::Receiv
     receiver_ptr = m_receiver_plugins[connection_or_topic];
   }
   auto res = receiver_ptr->receive(timeout);
+  m_bytes_received[connection_or_topic] += res.data.size();
 
   TLOG_DEBUG(9) << "END";
   return res;

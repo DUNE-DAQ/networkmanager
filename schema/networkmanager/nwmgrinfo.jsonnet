@@ -11,7 +11,7 @@ local info = {
    connection  : s.string("connection", doc="connection name"),
 
    entry : s.record( "entry", [
-   	  s.field( "connection", self.connection, "", doc="connection name"), 
+   	  s.field( "name", self.connection, "", doc="connection name"), 
 	   s.field( "bytes", self.count, 0, doc="bytes sent or received via the connection")
 	    ], doc="single entry for a report" ),
 
