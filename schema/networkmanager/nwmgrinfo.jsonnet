@@ -3,7 +3,7 @@
 // for operational monitoring
 
 local moo = import "moo.jsonnet";
-local s = moo.oschema.schema("dunedaq.networkmanager.networkmanagerinfo");
+local s = moo.oschema.schema("dunedaq.networkmanager.nwmgrinfo");
 
 local info = {
 
