@@ -12,7 +12,7 @@ find_package(utilities REQUIRED)
 find_package(opmonlib REQUIRED)
 find_package(ers REQUIRED)
 find_package(nlohmann_json REQUIRED)
-
+find_package(Boost COMPONENTS unit_test_framework REQUIRED)
 
 ##############################################################################
 # Schema
