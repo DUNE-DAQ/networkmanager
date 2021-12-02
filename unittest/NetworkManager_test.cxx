@@ -382,13 +382,15 @@ BOOST_FIXTURE_TEST_CASE(Publish, NetworkManagerTestFixture)
   BOOST_REQUIRE_EQUAL(received_string, "");
 }
 
-BOOST_FIXTURE_TEST_CASE(SingleConnectionSubscriber, NetworkManagerTestFixture) {
+BOOST_FIXTURE_TEST_CASE(SingleConnectionSubscriber, NetworkManagerTestFixture)
+{
 
   std::string sent_string;
   std::string received_string_topic;
   std::string received_string_conn;
 
-  std::function<void(dunedaq::ipm::Receiver::Response)> callback_topic = [&](dunedaq::ipm::Receiver::Response response) {
+  std::function<void(dunedaq::ipm::Receiver::Response)> callback_topic =
+    [&](dunedaq::ipm::Receiver::Response response) {
       received_string_topic = std::string(response.data.begin(), response.data.end());
     };
   NetworkManager::get().subscribe("baz");
@@ -521,6 +523,85 @@ BOOST_FIXTURE_TEST_CASE(OneListenerThreaded, NetworkManagerTestFixture)
 
   BOOST_REQUIRE_EQUAL(num_connected.load(), 1);
   BOOST_REQUIRE_EQUAL(num_fail.load(), thread_count - 1);
+}
+
+BOOST_FIXTURE_TEST_CASE(RateLimitedReceive, NetworkManagerTestFixture)
+{
+  const int num_sending_threads = 5;
+  const int num_sends = 10;
+
+  auto substr_proc = [](int idx) {
+    const std::string pattern_string =
+      "aaaaabbbbbcccccdddddeeeeefffffggggghhhhhiiiiijjjjjkkkkklllllmmmmmnnnnnooooopppppqqqqqrrrrrssssstttttuuuuuvvvvvww"
+      "wwwxxxxxyyyyyzzzzzAAAAABBBBBCCCCCDDDDDEEEEEFFFFFGGGGGHHHHHIIIIIJJJJJKKKKKLLLLLMMMMMNNNNNOOOOOPPPPPQQQQQRRRRRSSSS"
+      "STTTTTUUUUUVVVVVWWWWWXXXXXYYYYYZZZZZ";
+
+    auto string_idx = idx % pattern_string.size();
+    if (string_idx + 5 < pattern_string.size()) {
+      return pattern_string.substr(string_idx, 5);
+    } else {
+      return pattern_string.substr(string_idx, 5) + pattern_string.substr(0, string_idx - pattern_string.size() + 5);
+    }
+  };
+  auto send_proc = [&](int idx) {
+    std::string buf = std::to_string(idx) + substr_proc(idx);
+    for (int i = 0; i < num_sends; ++i) {
+      TLOG_DEBUG(14) << "Sending " << buf << " for idx " << idx << ", send number " << i << " BEGIN";
+      NetworkManager::get().send_to("foo", buf.c_str(), buf.size(), dunedaq::ipm::Sender::s_block);
+      TLOG_DEBUG(14) << "Sending " << buf << " for idx " << idx << ", send number " << i << " COMPLETE";
+    }
+  };
+
+  size_t messages_received = 0;
+  size_t num_empty_responses = 0;
+  size_t num_size_errors = 0;
+  size_t num_content_errors = 0;
+
+  auto recv_proc = [&](dunedaq::ipm::Receiver::Response response) {
+    if (response.data.size() == 0) {
+      num_empty_responses++;
+    }
+    auto received_idx = std::stoi(std::string(response.data.begin(), response.data.end()));
+    auto idx_string = std::to_string(received_idx);
+    auto received_string = std::string(response.data.begin() + idx_string.size(), response.data.end());
+
+    TLOG_DEBUG(14) << "Receiver received " << received_string << " for idx " << received_idx;
+
+    if (received_string.size() != 5) {
+      num_size_errors++;
+    }
+
+    std::string check = substr_proc(received_idx);
+
+    if (received_string != check) {
+      num_content_errors++;
+    }
+    messages_received++;
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+  };
+  NetworkManager::get().start_listening("foo");
+  NetworkManager::get().register_callback("foo", recv_proc);
+
+  std::array<std::thread, num_sending_threads> threads;
+
+  TLOG_DEBUG(14) << "Before starting send threads";
+  for (int idx = 0; idx < num_sending_threads; ++idx) {
+    threads[idx] = std::thread(send_proc, idx);
+  }
+  TLOG_DEBUG(14) << "After starting send threads";
+  for (int idx = 0; idx < num_sending_threads; ++idx) {
+    threads[idx].join();
+  }
+
+  TLOG_DEBUG(14) << "Sleeping to allow all messages to be processed";
+  std::this_thread::sleep_for(std::chrono::seconds(1));
+
+  TLOG_DEBUG(14) << "Shutting down receiver";
+  NetworkManager::get().stop_listening("foo");
+  BOOST_CHECK_EQUAL(messages_received, num_sending_threads * num_sends);
+  BOOST_REQUIRE_EQUAL(num_empty_responses, 0);
+  BOOST_REQUIRE_EQUAL(num_size_errors, 0);
+  BOOST_REQUIRE_EQUAL(num_content_errors, 0);
 }
 
 BOOST_AUTO_TEST_CASE(ManyThreadsSendingAndReceiving)
