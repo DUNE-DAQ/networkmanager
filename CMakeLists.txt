@@ -5,6 +5,8 @@ find_package(daq-cmake REQUIRED)
 
 daq_setup_environment()
 
+find_package(Boost 1.70.0 COMPONENTS unit_test_framework program_options REQUIRED)
+
 find_package(ipm REQUIRED)
 find_package(logging REQUIRED)
 find_package(utilities REQUIRED)
