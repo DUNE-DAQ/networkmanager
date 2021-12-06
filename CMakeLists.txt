@@ -20,7 +20,7 @@ find_package(nlohmann_json REQUIRED)
 # Schema
 
 daq_codegen( nwmgr.jsonnet TEMPLATES Structs.hpp.j2 Nljs.hpp.j2 )
-daq_codegen( nwmgrinfo.jsonnet DEP_PKGS opmonlib TEMPLATES opmonlib/InfoStructs.hpp.j2 opmonlib/InfoNljs.hpp.j2 )
+daq_codegen( nwmgr*info.jsonnet DEP_PKGS opmonlib TEMPLATES opmonlib/InfoStructs.hpp.j2 opmonlib/InfoNljs.hpp.j2 )
 
 ##############################################################################
 # Main library
