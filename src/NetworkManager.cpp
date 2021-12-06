@@ -8,7 +8,8 @@
 
 #include "networkmanager/NetworkManager.hpp"
 
-#include "networkmanager/nwmgrinfo/InfoNljs.hpp"
+#include "networkmanager/nwmgrsentinfo/InfoNljs.hpp"
+#include "networkmanager/nwmgrreceivedinfo/InfoNljs.hpp"
 
 #include "ipm/PluginInfo.hpp"
 #include "ipm/Subscriber.hpp"
@@ -34,22 +35,22 @@ NetworkManager::get()
 void
 NetworkManager::gather_stats(opmonlib::InfoCollector& ci, int /*level*/)
 {
-  nwmgrinfo::Info nwminfo;
 
   for (auto& sent_pair : m_bytes_sent) {
-    nwmgrinfo::entry entry;
-    entry.name = sent_pair.first;
-    entry.bytes = sent_pair.second.exchange(0);
-    nwminfo.sent.push_back(entry);
+    nwmgrsentinfo::Info sentinfo;
+    sentinfo.bytes = sent_pair.second.exchange(0);
+    opmonlib::InfoCollector tmp_ic;
+    tmp_ic.add(sentinfo);
+    ci.add(sent_pair.first, tmp_ic);
   }
   for (auto& recv_pair : m_bytes_received) {
-    nwmgrinfo::entry entry;
-    entry.name = recv_pair.first;
-    entry.bytes = recv_pair.second.exchange(0);
-    nwminfo.received.push_back(entry);
+    nwmgrreceivedinfo::Info receivedinfo;
+    receivedinfo.bytes = recv_pair.second.exchange(0);
+    opmonlib::InfoCollector tmp_ic;
+    tmp_ic.add(receivedinfo);
+    ci.add(recv_pair.first, tmp_ic);
   }
 
-  ci.add(nwminfo);
 }
 
 void
