@@ -96,8 +96,10 @@ private:
   std::unordered_map<std::string, std::shared_ptr<ipm::Sender>> m_sender_plugins;
   std::unordered_map<std::string, Listener> m_registered_listeners;
 
-  std::unordered_map<std::string, std::atomic<size_t>> m_bytes_received;
-  std::unordered_map<std::string, std::atomic<size_t>> m_bytes_sent;
+  using info_type = std::pair<std::atomic<size_t>, std::atomic<size_t>>;
+  // the first element is for the bytes, the second for the number of messages
+  std::unordered_map<std::string, info_type> m_received_data;
+  std::unordered_map<std::string, info_type> m_sent_data;
 
   std::unique_lock<std::mutex> get_connection_lock(std::string const& connection_name) const;
   mutable std::unordered_map<std::string, std::mutex> m_connection_mutexes;

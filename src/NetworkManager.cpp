@@ -8,8 +8,7 @@
 
 #include "networkmanager/NetworkManager.hpp"
 
-#include "networkmanager/nwmgrsentinfo/InfoNljs.hpp"
-#include "networkmanager/nwmgrreceivedinfo/InfoNljs.hpp"
+#include "networkmanager/connectioninfo/InfoNljs.hpp"
 
 #include "ipm/PluginInfo.hpp"
 #include "ipm/Subscriber.hpp"
@@ -36,21 +35,25 @@ void
 NetworkManager::gather_stats(opmonlib::InfoCollector& ci, int /*level*/)
 {
 
-  for (auto& sent_pair : m_bytes_sent) {
-    nwmgrsentinfo::Info sentinfo;
-    sentinfo.bytes = sent_pair.second.exchange(0);
-    opmonlib::InfoCollector tmp_ic;
-    tmp_ic.add(sentinfo);
-    ci.add(sent_pair.first, tmp_ic);
-  }
-  for (auto& recv_pair : m_bytes_received) {
-    nwmgrreceivedinfo::Info receivedinfo;
-    receivedinfo.bytes = recv_pair.second.exchange(0);
-    opmonlib::InfoCollector tmp_ic;
-    tmp_ic.add(receivedinfo);
-    ci.add(recv_pair.first, tmp_ic);
+  std::map<std::string, connectioninfo::Info> total;
+
+  for (auto& sent : m_sent_data) {
+    auto & info =  total[sent.first];
+    info.sent_bytes = sent.second.first.exchange(0);
+    info.sent_messages = sent.second.second.exchange(0);
   }
 
+  for (auto& received : m_received_data) {
+    auto & info =  total[received.first];
+    info.received_bytes = received.second.first.exchange(0);
+    info.received_messages = received.second.second.exchange(0);
+  }
+
+  for ( auto& info : total ) {
+    opmonlib::InfoCollector tmp_ic;
+    tmp_ic.add(info.second);
+    ci.add(info.first, tmp_ic);
+  }
 }
 
 void
@@ -104,6 +107,8 @@ NetworkManager::reset()
   m_topic_map.clear();
   m_connection_map.clear();
   m_connection_mutexes.clear();
+  m_sent_data.clear();
+  m_received_data.clear();
 }
 
 void
@@ -252,7 +257,9 @@ NetworkManager::send_to(std::string const& connection_name,
     sender_ptr = m_sender_plugins[connection_name];
   }
   sender_ptr->send(buffer, size, timeout, topic);
-  m_bytes_sent[connection_name] += size;
+  auto & data = m_sent_data[connection_name];
+  data.first += size ;
+  ++ data.second ;
 }
 
 ipm::Receiver::Response
@@ -277,7 +284,10 @@ NetworkManager::receive_from(std::string const& connection_or_topic, ipm::Receiv
     receiver_ptr = m_receiver_plugins[connection_or_topic];
   }
   auto res = receiver_ptr->receive(timeout);
-  m_bytes_received[connection_or_topic] += res.data.size();
+
+  auto & data = m_received_data[connection_or_topic];
+  data.first += res.data.size();
+  ++ data.second ;
 
   TLOG_DEBUG(9) << "END";
   return res;
