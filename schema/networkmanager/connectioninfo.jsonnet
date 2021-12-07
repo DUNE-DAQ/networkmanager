@@ -11,9 +11,9 @@ local info = {
 
    info: s.record("Info", [
        s.field("sent_bytes", self.count, 0, doc="Bytes sent via a connection of the networkmanager"),
-       s.field("received_bytes", self.count", 0, doc="Bytes received via a connection of the networkmanager"),
-       s.field("sent_messages" self.count, 0, doc="Messages sent via a connection of the networkmanager"),
-       s.field("received_messages" self.count, 0, doc="Messages received via a connection of the networkmanager")
+       s.field("received_bytes", self.count, 0, doc="Bytes received via a connection of the networkmanager"),
+       s.field("sent_messages", self.count, 0, doc="Messages sent via a connection of the networkmanager"),
+       s.field("received_messages", self.count, 0, doc="Messages received via a connection of the networkmanager")
    ], doc="Netowrk Manager information")
 };
 
