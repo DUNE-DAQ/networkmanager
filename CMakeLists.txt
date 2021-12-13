@@ -5,6 +5,8 @@ find_package(daq-cmake REQUIRED)
 
 daq_setup_environment()
 
+find_package(Boost 1.70.0 COMPONENTS unit_test_framework program_options REQUIRED)
+
 find_package(ipm REQUIRED)
 find_package(logging REQUIRED)
 find_package(utilities REQUIRED)
@@ -18,12 +20,12 @@ find_package(Boost COMPONENTS unit_test_framework REQUIRED)
 # Schema
 
 daq_codegen( nwmgr.jsonnet TEMPLATES Structs.hpp.j2 Nljs.hpp.j2 )
-daq_codegen( nwmgrinfo.jsonnet DEP_PKGS opmonlib TEMPLATES opmonlib/InfoStructs.hpp.j2 opmonlib/InfoNljs.hpp.j2 )
+daq_codegen( connectioninfo.jsonnet DEP_PKGS opmonlib TEMPLATES opmonlib/InfoStructs.hpp.j2 opmonlib/InfoNljs.hpp.j2 )
 
 ##############################################################################
 # Main library
 
-daq_add_library(NetworkManager.cpp Listener.cpp LINK_LIBRARIES ipm::ipm utilities::utilities logging::logging)
+daq_add_library(NetworkManager.cpp Listener.cpp LINK_LIBRARIES ipm::ipm utilities::utilities logging::logging opmonlib::opmonlib)
 
 ##############################################################################
 # Unit tests
