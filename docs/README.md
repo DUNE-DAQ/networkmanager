@@ -8,7 +8,7 @@ NetworkManager is available within all `daq_application` instances, by calling t
 
 ### Receiving Data from Network Connections
 
-NetworkManager supports a callback-based architecture for receiving messages from the network. Whenever a message arrives, the configured callback is called on a thread. It is the callback's responsibility to deserialize the message and perform any validity checks.
+NetworkManager supports a callback-based architecture for receiving messages from the network. Whenever a message arrives, the configured callback is called on a thread. It is the callback's responsibility to deserialize the message and perform any validity checks; an example of this type of callback can be found in the `FragmentReceiver::dispatch_fragment` function on l. 124 of the dfmodules package's [FragmentReceiver.cpp](https://github.com/DUNE-DAQ/dfmodules/blob/ed868f5cfb73750012f04cb930dafc296d7c4c2c/plugins/FragmentReceiver.cpp) source file. 
 
 The sequence of events for a receiver should be:
 
@@ -31,7 +31,7 @@ Additionally, subscribers can choose whether to call `start_listening` to receiv
 
 ### Configuring NetworkManager
 
-Currently, NetworkManager is statically configured during the `init` step. Each nwmgr::Connection object contains the name of the connection, the address of the `bind` endpoint, and a list of topics supported on that connection.
+Currently, NetworkManager is statically configured during the `init` step. Each `nwmgr::Connection` object contains the name of the connection, the address of the `bind` endpoint, and a list of topics supported on that connection.
 
 ## API Description
 
