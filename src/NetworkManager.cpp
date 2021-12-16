@@ -38,18 +38,18 @@ NetworkManager::gather_stats(opmonlib::InfoCollector& ci, int /*level*/)
   std::map<std::string, connectioninfo::Info> total;
 
   for (auto& sent : m_sent_data) {
-    auto & info =  total[sent.first];
+    auto& info = total[sent.first];
     info.sent_bytes = sent.second.first.exchange(0);
     info.sent_messages = sent.second.second.exchange(0);
   }
 
   for (auto& received : m_received_data) {
-    auto & info =  total[received.first];
+    auto& info = total[received.first];
     info.received_bytes = received.second.first.exchange(0);
     info.received_messages = received.second.second.exchange(0);
   }
 
-  for ( auto& info : total ) {
+  for (auto& info : total) {
     opmonlib::InfoCollector tmp_ic;
     tmp_ic.add(info.second);
     ci.add(info.first, tmp_ic);
@@ -124,7 +124,7 @@ NetworkManager::start_listening(std::string const& connection_name)
     throw OperationFailed(ERS_HERE, "Connection is pub/sub type, call start_listening on desired topic(s) instead!");
   }*/
 
-  if (is_listening(connection_name)) {
+  if (is_listening_locked(connection_name)) {
     throw ListenerAlreadyRegistered(ERS_HERE, connection_name);
   }
 
@@ -136,7 +136,7 @@ NetworkManager::stop_listening(std::string const& connection_name)
 {
   TLOG_DEBUG(5) << "Stop listening on connection " << connection_name;
   std::lock_guard<std::mutex> lk(m_registration_mutex);
-  if (!is_listening(connection_name)) {
+  if (!is_listening_locked(connection_name)) {
     throw ListenerNotRegistered(ERS_HERE, connection_name);
   }
 
@@ -157,7 +157,7 @@ NetworkManager::register_callback(std::string const& connection_or_topic,
     throw OperationFailed(ERS_HERE, "Connection is pub/sub type, call register_callback on desired topic(s) instead!");
   }*/
 
-  if (!is_listening(connection_or_topic)) {
+  if (!is_listening_locked(connection_or_topic)) {
     throw ListenerNotRegistered(ERS_HERE, connection_or_topic);
   }
 
@@ -180,7 +180,7 @@ NetworkManager::subscribe(std::string const& topic)
     throw TopicNotFound(ERS_HERE, topic);
   }
 
-  if (is_listening(topic)) {
+  if (is_listening_locked(topic)) {
     throw ListenerAlreadyRegistered(ERS_HERE, topic);
   }
 
@@ -192,7 +192,7 @@ NetworkManager::unsubscribe(std::string const& topic)
 {
   TLOG_DEBUG(5) << "Stop listening on topic " << topic;
   std::lock_guard<std::mutex> lk(m_registration_mutex);
-  if (!is_listening(topic)) {
+  if (!is_listening_locked(topic)) {
     throw ListenerNotRegistered(ERS_HERE, topic);
   }
 
@@ -212,7 +212,7 @@ NetworkManager::start_publisher(std::string const& connection_name)
     throw OperationFailed(ERS_HERE, "Connection is not pub/sub type, cannot start sender early");
   }
 
-  if (!m_sender_plugins.count(connection_name)) {
+  if (!is_connection_open(connection_name, ConnectionDirection::Send)) {
     create_sender(connection_name);
   }
 }
@@ -246,7 +246,7 @@ NetworkManager::send_to(std::string const& connection_name,
   }
 
   TLOG_DEBUG(10) << "Checking sender plugins";
-  if (!m_sender_plugins.count(connection_name)) {
+  if (!is_connection_open(connection_name, ConnectionDirection::Send)) {
     create_sender(connection_name);
   }
 
@@ -257,9 +257,9 @@ NetworkManager::send_to(std::string const& connection_name,
     sender_ptr = m_sender_plugins[connection_name];
   }
   sender_ptr->send(buffer, size, timeout, topic);
-  auto & data = m_sent_data[connection_name];
-  data.first += size ;
-  ++ data.second ;
+  auto& data = m_sent_data[connection_name];
+  data.first += size;
+  ++data.second;
 }
 
 ipm::Receiver::Response
@@ -271,7 +271,7 @@ NetworkManager::receive_from(std::string const& connection_or_topic, ipm::Receiv
     throw ConnectionNotFound(ERS_HERE, connection_or_topic);
   }
 
-  if (!m_receiver_plugins.count(connection_or_topic)) {
+  if (!is_connection_open(connection_or_topic, ConnectionDirection::Recv)) {
     TLOG_DEBUG(9) << "Creating receiver for connection or topic " << connection_or_topic;
     create_receiver(connection_or_topic);
   }
@@ -285,9 +285,9 @@ NetworkManager::receive_from(std::string const& connection_or_topic, ipm::Receiv
   }
   auto res = receiver_ptr->receive(timeout);
 
-  auto & data = m_received_data[connection_or_topic];
+  auto& data = m_received_data[connection_or_topic];
   data.first += res.data.size();
-  ++ data.second ;
+  ++data.second;
 
   TLOG_DEBUG(9) << "END";
   return res;
@@ -357,6 +357,13 @@ NetworkManager::is_pubsub_connection(std::string const& connection_name) const
 bool
 NetworkManager::is_listening(std::string const& connection_or_topic) const
 {
+  std::lock_guard<std::mutex> lk(m_registration_mutex);
+  return is_listening_locked(connection_or_topic);
+}
+
+bool
+NetworkManager::is_listening_locked(std::string const& connection_or_topic) const
+{
   if (!m_registered_listeners.count(connection_or_topic))
     return false;
 
@@ -368,10 +375,14 @@ NetworkManager::is_connection_open(std::string const& connection_name,
                                    NetworkManager::ConnectionDirection direction) const
 {
   switch (direction) {
-    case ConnectionDirection::Recv:
+    case ConnectionDirection::Recv: {
+      std::lock_guard<std::mutex> recv_lk(m_receiver_plugin_map_mutex);
       return m_receiver_plugins.count(connection_name);
-    case ConnectionDirection::Send:
+    }
+    case ConnectionDirection::Send: {
+      std::lock_guard<std::mutex> send_lk(m_sender_plugin_map_mutex);
       return m_sender_plugins.count(connection_name);
+    }
   }
 
   return false;
