@@ -87,6 +87,7 @@ private:
   NetworkManager& operator=(NetworkManager const&) = delete;
   NetworkManager& operator=(NetworkManager&&) = delete;
 
+  bool is_listening_locked(std::string const& connection_or_topic) const;
   void create_receiver(std::string const& connection_or_topic);
   void create_sender(std::string const& connection_name);
 
@@ -103,9 +104,9 @@ private:
 
   std::unique_lock<std::mutex> get_connection_lock(std::string const& connection_name) const;
   mutable std::unordered_map<std::string, std::mutex> m_connection_mutexes;
-  std::mutex m_receiver_plugin_map_mutex;
-  std::mutex m_sender_plugin_map_mutex;
-  std::mutex m_registration_mutex;
+  mutable std::mutex m_receiver_plugin_map_mutex;
+  mutable std::mutex m_sender_plugin_map_mutex;
+  mutable std::mutex m_registration_mutex;
 };
 } // namespace networkmanager
 } // namespace dunedaq
