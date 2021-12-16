@@ -382,13 +382,15 @@ BOOST_FIXTURE_TEST_CASE(Publish, NetworkManagerTestFixture)
   BOOST_REQUIRE_EQUAL(received_string, "");
 }
 
-BOOST_FIXTURE_TEST_CASE(SingleConnectionSubscriber, NetworkManagerTestFixture) {
+BOOST_FIXTURE_TEST_CASE(SingleConnectionSubscriber, NetworkManagerTestFixture)
+{
 
   std::string sent_string;
   std::string received_string_topic;
   std::string received_string_conn;
 
-  std::function<void(dunedaq::ipm::Receiver::Response)> callback_topic = [&](dunedaq::ipm::Receiver::Response response) {
+  std::function<void(dunedaq::ipm::Receiver::Response)> callback_topic =
+    [&](dunedaq::ipm::Receiver::Response response) {
       received_string_topic = std::string(response.data.begin(), response.data.end());
     };
   NetworkManager::get().subscribe("baz");

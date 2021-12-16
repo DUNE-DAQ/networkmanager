@@ -44,7 +44,6 @@ public:
 
   static NetworkManager& get();
 
-
   void gather_stats(opmonlib::InfoCollector& ci, int /*level*/);
   void configure(const nwmgr::Connections& connections);
   void reset();
