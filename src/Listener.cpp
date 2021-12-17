@@ -64,6 +64,7 @@ Listener::stop_listening()
 void
 Listener::set_callback(std::function<void(ipm::Receiver::Response)> callback)
 {
+  std::lock_guard<std::mutex> lk(m_callback_mutex);
   m_callback = callback;
 }
 
@@ -84,6 +85,7 @@ Listener::shutdown()
   m_is_listening = false;
   if (m_listener_thread && m_listener_thread->joinable())
     m_listener_thread->join();
+  std::lock_guard<std::mutex> lk(m_callback_mutex);
   m_callback = nullptr;
 }
 
@@ -96,9 +98,11 @@ Listener::listener_thread_loop()
       auto response = NetworkManager::get().receive_from(m_connection_name, ipm::Receiver::s_no_block);
 
       TLOG_DEBUG(25) << "Received " << response.data.size() << " bytes. Dispatching to callback.";
-
-      if (m_callback != nullptr) {
-        m_callback(response);
+      {
+        std::lock_guard<std::mutex> lk(m_callback_mutex);
+        if (m_callback != nullptr) {
+          m_callback(response);
+        }
       }
     } catch (ipm::ReceiveTimeoutExpired const& tmo) {
       usleep(10000);

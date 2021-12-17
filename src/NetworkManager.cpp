@@ -14,6 +14,7 @@
 #include "ipm/Subscriber.hpp"
 #include "logging/Logging.hpp"
 
+#include <map>
 #include <memory>
 #include <string>
 #include <vector>
@@ -120,10 +121,6 @@ NetworkManager::start_listening(std::string const& connection_name)
     throw ConnectionNotFound(ERS_HERE, connection_name);
   }
 
-  /* if (is_pubsub_connection(connection_name)) {
-    throw OperationFailed(ERS_HERE, "Connection is pub/sub type, call start_listening on desired topic(s) instead!");
-  }*/
-
   if (is_listening_locked(connection_name)) {
     throw ListenerAlreadyRegistered(ERS_HERE, connection_name);
   }
@@ -152,10 +149,6 @@ NetworkManager::register_callback(std::string const& connection_or_topic,
   if (!m_connection_map.count(connection_or_topic) && !m_topic_map.count(connection_or_topic)) {
     throw ConnectionNotFound(ERS_HERE, connection_or_topic);
   }
-
-  /* if (is_pubsub_connection(connection_or_topic)) {
-    throw OperationFailed(ERS_HERE, "Connection is pub/sub type, call register_callback on desired topic(s) instead!");
-  }*/
 
   if (!is_listening_locked(connection_or_topic)) {
     throw ListenerNotRegistered(ERS_HERE, connection_or_topic);
