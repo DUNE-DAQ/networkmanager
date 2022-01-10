@@ -18,6 +18,7 @@
 #include <chrono>
 #include <functional>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <thread>
 #include <unordered_map>
@@ -51,6 +52,7 @@ private:
 
   std::string m_connection_name = "";
   std::function<void(ipm::Receiver::Response)> m_callback;
+  mutable std::mutex m_callback_mutex;
   std::unique_ptr<std::thread> m_listener_thread{ nullptr };
   std::atomic<bool> m_is_listening{ false };
 };

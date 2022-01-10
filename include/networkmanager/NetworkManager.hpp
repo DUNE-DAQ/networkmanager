@@ -16,6 +16,7 @@
 
 #include "ipm/Receiver.hpp"
 #include "ipm/Sender.hpp"
+#include "opmonlib/InfoCollector.hpp"
 
 #include <atomic>
 #include <chrono>
@@ -43,6 +44,7 @@ public:
 
   static NetworkManager& get();
 
+  void gather_stats(opmonlib::InfoCollector& ci, int /*level*/);
   void configure(const nwmgr::Connections& connections);
   void reset();
 
@@ -84,6 +86,7 @@ private:
   NetworkManager& operator=(NetworkManager const&) = delete;
   NetworkManager& operator=(NetworkManager&&) = delete;
 
+  bool is_listening_locked(std::string const& connection_or_topic) const;
   void create_receiver(std::string const& connection_or_topic);
   void create_sender(std::string const& connection_name);
 
@@ -93,11 +96,16 @@ private:
   std::unordered_map<std::string, std::shared_ptr<ipm::Sender>> m_sender_plugins;
   std::unordered_map<std::string, Listener> m_registered_listeners;
 
+  using info_type = std::pair<std::atomic<size_t>, std::atomic<size_t>>;
+  // the first element is for the bytes, the second for the number of messages
+  std::unordered_map<std::string, info_type> m_received_data;
+  std::unordered_map<std::string, info_type> m_sent_data;
+
   std::unique_lock<std::mutex> get_connection_lock(std::string const& connection_name) const;
   mutable std::unordered_map<std::string, std::mutex> m_connection_mutexes;
-  std::mutex m_receiver_plugin_map_mutex;
-  std::mutex m_sender_plugin_map_mutex;
-  std::mutex m_registration_mutex;
+  mutable std::mutex m_receiver_plugin_map_mutex;
+  mutable std::mutex m_sender_plugin_map_mutex;
+  mutable std::mutex m_registration_mutex;
 };
 } // namespace networkmanager
 } // namespace dunedaq
