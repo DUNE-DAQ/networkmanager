@@ -9,6 +9,7 @@ find_dependency(opmonlib)
 find_dependency(utilities)
 find_dependency(ers)
 find_dependency(nlohmann_json)
+find_dependency(serialization)
 
 # Figure out whether or not this dependency is an installed package or
 # in repo form

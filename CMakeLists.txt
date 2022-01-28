@@ -15,6 +15,7 @@ find_package(opmonlib REQUIRED)
 find_package(ers REQUIRED)
 find_package(nlohmann_json REQUIRED)
 find_package(Boost COMPONENTS unit_test_framework REQUIRED)
+find_package(serialization REQUIRED)
 
 ##############################################################################
 # Schema
@@ -25,7 +26,7 @@ daq_codegen( connectioninfo.jsonnet DEP_PKGS opmonlib TEMPLATES opmonlib/InfoStr
 ##############################################################################
 # Main library
 
-daq_add_library(NetworkManager.cpp Listener.cpp LINK_LIBRARIES ipm::ipm utilities::utilities logging::logging opmonlib::opmonlib)
+daq_add_library(NetworkManager.cpp Listener.cpp LINK_LIBRARIES ipm::ipm utilities::utilities logging::logging opmonlib::opmonlib serialization::serialization)
 
 ##############################################################################
 # Unit tests

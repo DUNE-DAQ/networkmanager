@@ -17,6 +17,7 @@
 #include "ipm/Receiver.hpp"
 #include "ipm/Sender.hpp"
 #include "opmonlib/InfoCollector.hpp"
+#include "serialization/Serialization.hpp"
 
 #include <atomic>
 #include <chrono>
@@ -64,6 +65,23 @@ public:
                ipm::Sender::duration_t timeout,
                std::string const& topic = "");
   ipm::Receiver::Response receive_from(std::string const& connection_or_topic, ipm::Receiver::duration_t timeout);
+
+  template<typename T>
+  T const& receive_from(std::string const& connection_or_topic, ipm::Receiver::duration_t timeout)
+  {
+    auto response = receive_from(connection_or_topic, timeout);
+    auto object = dunedaq::serialization::deserialize<T>(response.data());
+    return object;
+  }
+  template<typename T>
+  void send_to(std::string connection_name,
+      T const& object,
+      ipm::Sender::duration_t timeout,
+      std::string const& topic = "")
+  {
+    auto message = dunedaq::serialization::serialize(object, dunedaq::serialization::SerializationType::kMsgPack);
+    send_to(connection_name, message.data(), message.size(), timeout, topic);
+  }
 
   std::string get_connection_string(std::string const& connection_name) const;
   std::vector<std::string> get_connection_strings(std::string const& topic) const;
