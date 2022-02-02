@@ -11,7 +11,6 @@
 #define NETWORKMANAGER_INCLUDE_NETWORKMANAGER_NETWORKMANAGER_HPP_
 
 #include "networkmanager/Issues.hpp"
-#include "networkmanager/Listener.hpp"
 #include "networkmanager/nwmgr/Structs.hpp"
 
 #include "ipm/Receiver.hpp"
@@ -51,7 +50,7 @@ public:
   // Receive via callback
   void start_listening(std::string const& connection_name);
   void stop_listening(std::string const& connection_name);
-  void register_callback(std::string const& connection_or_topic, std::function<void(ipm::Receiver::Response)> callback);
+  void register_callback(std::string const& connection_or_topic, std::function<void(ipm::Receiver::Response&)> callback);
   void clear_callback(std::string const& connection_or_topic);
   void subscribe(std::string const& topic);
   void unsubscribe(std::string const& topic);
@@ -94,7 +93,6 @@ private:
   std::unordered_map<std::string, std::vector<std::string>> m_topic_map;
   std::unordered_map<std::string, std::shared_ptr<ipm::Receiver>> m_receiver_plugins;
   std::unordered_map<std::string, std::shared_ptr<ipm::Sender>> m_sender_plugins;
-  std::unordered_map<std::string, Listener> m_registered_listeners;
 
   using info_type = std::pair<std::atomic<size_t>, std::atomic<size_t>>;
   // the first element is for the bytes, the second for the number of messages

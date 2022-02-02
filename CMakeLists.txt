@@ -25,11 +25,10 @@ daq_codegen( connectioninfo.jsonnet DEP_PKGS opmonlib TEMPLATES opmonlib/InfoStr
 ##############################################################################
 # Main library
 
-daq_add_library(NetworkManager.cpp Listener.cpp LINK_LIBRARIES ipm::ipm utilities::utilities logging::logging opmonlib::opmonlib)
+daq_add_library(NetworkManager.cpp LINK_LIBRARIES ipm::ipm utilities::utilities logging::logging opmonlib::opmonlib)
 
 ##############################################################################
 # Unit tests
-daq_add_unit_test(Listener_test LINK_LIBRARIES networkmanager)
 daq_add_unit_test(NetworkManager_test LINK_LIBRARIES networkmanager)
 
 daq_install()

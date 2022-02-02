@@ -353,6 +353,8 @@ BOOST_FIXTURE_TEST_CASE(Publish, NetworkManagerTestFixture)
                           dunedaq::ipm::ReceiveTimeoutExpired,
                           [&](dunedaq::ipm::ReceiveTimeoutExpired const&) { return true; });
 
+  NetworkManager::get().receive_from("foo", dunedaq::ipm::Receiver::s_no_block);
+
   sent_string = "this is another test string";
   received_string = "";
   NetworkManager::get().send_to("rab", sent_string.c_str(), sent_string.size(), dunedaq::ipm::Sender::s_block, "baz");

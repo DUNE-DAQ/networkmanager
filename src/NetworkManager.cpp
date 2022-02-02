@@ -93,10 +93,6 @@ void
 NetworkManager::reset()
 {
   std::lock_guard<std::mutex> lk(m_registration_mutex);
-  for (auto& listener_pair : m_registered_listeners) {
-    listener_pair.second.shutdown();
-  }
-  m_registered_listeners.clear();
   {
     std::lock_guard<std::mutex> lk(m_sender_plugin_map_mutex);
     m_sender_plugins.clear();
@@ -125,7 +121,10 @@ NetworkManager::start_listening(std::string const& connection_name)
     throw ListenerAlreadyRegistered(ERS_HERE, connection_name);
   }
 
-  m_registered_listeners[connection_name].start_listening(connection_name);
+  if (!is_connection_open(connection_name, ConnectionDirection::Recv)) {
+    TLOG_DEBUG(9) << "Creating receiver for connection " << connection_name;
+    create_receiver(connection_name);
+  }
 }
 
 void
@@ -137,12 +136,12 @@ NetworkManager::stop_listening(std::string const& connection_name)
     throw ListenerNotRegistered(ERS_HERE, connection_name);
   }
 
-  m_registered_listeners[connection_name].stop_listening();
+  m_receiver_plugins.erase(connection_name);
 }
 
 void
 NetworkManager::register_callback(std::string const& connection_or_topic,
-                                  std::function<void(ipm::Receiver::Response)> callback)
+                                  std::function<void(ipm::Receiver::Response&)> callback)
 {
   TLOG_DEBUG(5) << "Registering callback on connection or topic " << connection_or_topic;
   std::lock_guard<std::mutex> lk(m_registration_mutex);
@@ -154,14 +153,23 @@ NetworkManager::register_callback(std::string const& connection_or_topic,
     throw ListenerNotRegistered(ERS_HERE, connection_or_topic);
   }
 
-  m_registered_listeners[connection_or_topic].set_callback(callback);
+  m_receiver_plugins[connection_or_topic]->register_callback(callback);
 }
 
 void
 NetworkManager::clear_callback(std::string const& connection_or_topic)
 {
   TLOG_DEBUG(5) << "Setting callback on " << connection_or_topic << " to null";
-  register_callback(connection_or_topic, nullptr);
+  std::lock_guard<std::mutex> lk(m_registration_mutex);
+  if (!m_connection_map.count(connection_or_topic) && !m_topic_map.count(connection_or_topic)) {
+    throw ConnectionNotFound(ERS_HERE, connection_or_topic);
+  }
+
+  if (!is_listening_locked(connection_or_topic)) {
+    throw ListenerNotRegistered(ERS_HERE, connection_or_topic);
+  }
+
+  m_receiver_plugins[connection_or_topic]->unregister_callback();
 }
 
 void
@@ -177,7 +185,10 @@ NetworkManager::subscribe(std::string const& topic)
     throw ListenerAlreadyRegistered(ERS_HERE, topic);
   }
 
-  m_registered_listeners[topic].start_listening(topic);
+  if (!is_connection_open(topic, ConnectionDirection::Recv)) {
+    TLOG_DEBUG(9) << "Creating receiver for topic " << topic;
+    create_receiver(topic);
+  }
 }
 
 void
@@ -189,7 +200,7 @@ NetworkManager::unsubscribe(std::string const& topic)
     throw ListenerNotRegistered(ERS_HERE, topic);
   }
 
-  m_registered_listeners[topic].stop_listening();
+  m_receiver_plugins.erase(topic);
 }
 
 void
@@ -357,10 +368,10 @@ NetworkManager::is_listening(std::string const& connection_or_topic) const
 bool
 NetworkManager::is_listening_locked(std::string const& connection_or_topic) const
 {
-  if (!m_registered_listeners.count(connection_or_topic))
+  if (!m_receiver_plugins.count(connection_or_topic))
     return false;
 
-  return m_registered_listeners.at(connection_or_topic).is_listening();
+  return m_receiver_plugins.at(connection_or_topic)->can_receive();
 }
 
 bool
