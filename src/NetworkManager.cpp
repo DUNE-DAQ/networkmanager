@@ -11,7 +11,6 @@
 #include "networkmanager/connectioninfo/InfoNljs.hpp"
 
 #include "ipm/PluginInfo.hpp"
-#include "ipm/Subscriber.hpp"
 #include "logging/Logging.hpp"
 
 #include <map>
@@ -379,6 +378,72 @@ NetworkManager::is_connection_open(std::string const& connection_name,
   }
 
   return false;
+}
+
+std::shared_ptr<ipm::Receiver>
+NetworkManager::get_receiver(std::string const& connection_or_topic) 
+{
+  if (!m_connection_map.count(connection_or_topic) && !m_topic_map.count(connection_or_topic)) {
+    throw ConnectionNotFound(ERS_HERE, connection_or_topic);
+  }
+
+  if (!is_connection_open(connection_or_topic, ConnectionDirection::Recv)) {
+    TLOG_DEBUG(9) << "Creating receiver for connection or topic " << connection_or_topic;
+    create_receiver(connection_or_topic);
+  }
+
+  std::shared_ptr<ipm::Receiver> receiver_ptr;
+  {
+    std::lock_guard<std::mutex> lk(m_receiver_plugin_map_mutex);
+    receiver_ptr = m_receiver_plugins[connection_or_topic];
+  }
+
+  return receiver_ptr;
+}
+
+std::shared_ptr<ipm::Sender>
+NetworkManager::get_sender(std::string const& connection_name) 
+{
+  TLOG_DEBUG(10) << "Checking connection map";
+  if (!m_connection_map.count(connection_name)) {
+    throw ConnectionNotFound(ERS_HERE, connection_name);
+  }
+
+  TLOG_DEBUG(10) << "Checking sender plugins";
+  if (!is_connection_open(connection_name, ConnectionDirection::Send)) {
+    create_sender(connection_name);
+  }
+
+  TLOG_DEBUG(10) << "Sending message";
+  std::shared_ptr<ipm::Sender> sender_ptr;
+  {
+    std::lock_guard<std::mutex> lk(m_sender_plugin_map_mutex);
+    sender_ptr = m_sender_plugins[connection_name];
+  }
+
+  return sender_ptr;
+}
+
+std::shared_ptr<ipm::Subscriber>
+NetworkManager::get_subscriber(std::string const& topic) 
+{
+  TLOG_DEBUG(9) << "START";
+
+  if (!m_topic_map.count(topic)) {
+    throw ConnectionNotFound(ERS_HERE, topic);
+  }
+
+  if (!is_connection_open(topic, ConnectionDirection::Recv)) {
+    TLOG_DEBUG(9) << "Creating receiver for topic " << topic;
+    create_receiver(topic);
+  }
+
+  std::shared_ptr<ipm::Subscriber> subscriber_ptr;
+  {
+    std::lock_guard<std::mutex> lk(m_receiver_plugin_map_mutex);
+    subscriber_ptr = std::dynamic_pointer_cast<ipm::Subscriber>(m_receiver_plugins[topic]);
+  }
+  return subscriber_ptr;
 }
 
 void
