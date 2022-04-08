@@ -77,9 +77,9 @@ public:
   bool is_connection_open(std::string const& connection_name,
                           ConnectionDirection direction = ConnectionDirection::Recv) const;
 
-  std::shared_ptr<ipm::Receiver> get_receiver(std::string const& connection_or_topic) ;
-  std::shared_ptr<ipm::Sender> get_sender(std::string const& connection_name) ;
-  std::shared_ptr<ipm::Subscriber> get_subscriber(std::string const& topic) ;
+  std::shared_ptr<ipm::Receiver> get_receiver(std::string const& connection_or_topic);
+  std::shared_ptr<ipm::Sender> get_sender(std::string const& connection_name);
+  std::shared_ptr<ipm::Subscriber> get_subscriber(std::string const& topic);
 
 private:
   static std::unique_ptr<NetworkManager> s_instance;

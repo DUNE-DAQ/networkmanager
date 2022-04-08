@@ -381,7 +381,7 @@ NetworkManager::is_connection_open(std::string const& connection_name,
 }
 
 std::shared_ptr<ipm::Receiver>
-NetworkManager::get_receiver(std::string const& connection_or_topic) 
+NetworkManager::get_receiver(std::string const& connection_or_topic)
 {
   if (!m_connection_map.count(connection_or_topic) && !m_topic_map.count(connection_or_topic)) {
     throw ConnectionNotFound(ERS_HERE, connection_or_topic);
@@ -402,7 +402,7 @@ NetworkManager::get_receiver(std::string const& connection_or_topic)
 }
 
 std::shared_ptr<ipm::Sender>
-NetworkManager::get_sender(std::string const& connection_name) 
+NetworkManager::get_sender(std::string const& connection_name)
 {
   TLOG_DEBUG(10) << "Checking connection map";
   if (!m_connection_map.count(connection_name)) {
@@ -425,7 +425,7 @@ NetworkManager::get_sender(std::string const& connection_name)
 }
 
 std::shared_ptr<ipm::Subscriber>
-NetworkManager::get_subscriber(std::string const& topic) 
+NetworkManager::get_subscriber(std::string const& topic)
 {
   TLOG_DEBUG(9) << "START";
 
