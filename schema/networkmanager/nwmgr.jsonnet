@@ -14,10 +14,13 @@ local nm = {
   topic: s.string("Topic", doc="A topic on a connection"),
   topics: s.sequence("Topics", self.topic, doc="List of topics on a connection"),
 
+  fixed: s.bool("Fixed", doc="Fixed connection, for connections associated with global partition"),
+
   conninfo: s.record("Connection", [
   s.field("name", self.name, "", doc="Logical name of the connection"),
   s.field("address", self.address, "", doc="Address of endpoint"),
-  s.field("topics", self.topics, doc="Topics on this connection")
+  s.field("topics", self.topics, doc="Topics on this connection"),
+  s.field("fixed", self.fixed doc="Fixed connection, for connections associated with global partition")
   ], doc="Information about a connection"),
 
   connections: s.sequence("Connections", self.conninfo, doc="List of connection information objects"),
