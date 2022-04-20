@@ -217,10 +217,10 @@ NetworkManager::send_to(std::string const& connection_name,
                         ipm::Sender::duration_t timeout,
                         std::string const& topic)
 {
-  TLOG_DEBUG(10) << "Getting connection lock for connection " << connection_name;
+  TLOG_DEBUG(20) << "Getting connection lock for connection " << connection_name;
   auto send_lock = get_connection_lock(connection_name);
 
-  TLOG_DEBUG(10) << "Checking connection map";
+  TLOG_DEBUG(20) << "Checking connection map";
   if (!m_connection_map.count(connection_name)) {
     throw ConnectionNotFound(ERS_HERE, connection_name);
   }
@@ -238,12 +238,12 @@ NetworkManager::send_to(std::string const& connection_name,
     }
   }
 
-  TLOG_DEBUG(10) << "Checking sender plugins";
+  TLOG_DEBUG(20) << "Checking sender plugins";
   if (!is_connection_open(connection_name, ConnectionDirection::Send)) {
     create_sender(connection_name);
   }
 
-  TLOG_DEBUG(10) << "Sending message";
+  TLOG_DEBUG(20) << "Sending message";
   std::shared_ptr<ipm::Sender> sender_ptr;
   {
     std::lock_guard<std::mutex> lk(m_sender_plugin_map_mutex);
@@ -258,18 +258,18 @@ NetworkManager::send_to(std::string const& connection_name,
 ipm::Receiver::Response
 NetworkManager::receive_from(std::string const& connection_or_topic, ipm::Receiver::duration_t timeout)
 {
-  TLOG_DEBUG(9) << "START";
+  TLOG_DEBUG(19) << "START";
 
   if (!m_connection_map.count(connection_or_topic) && !m_topic_map.count(connection_or_topic)) {
     throw ConnectionNotFound(ERS_HERE, connection_or_topic);
   }
 
   if (!is_connection_open(connection_or_topic, ConnectionDirection::Recv)) {
-    TLOG_DEBUG(9) << "Creating receiver for connection or topic " << connection_or_topic;
+    TLOG_DEBUG(19) << "Creating receiver for connection or topic " << connection_or_topic;
     create_receiver(connection_or_topic);
   }
 
-  TLOG_DEBUG(9) << "Calling receive on connection or topic " << connection_or_topic;
+  TLOG_DEBUG(19) << "Calling receive on connection or topic " << connection_or_topic;
 
   std::shared_ptr<ipm::Receiver> receiver_ptr;
   {
@@ -282,7 +282,7 @@ NetworkManager::receive_from(std::string const& connection_or_topic, ipm::Receiv
   data.first += res.data.size();
   ++data.second;
 
-  TLOG_DEBUG(9) << "END";
+  TLOG_DEBUG(19) << "END";
   return res;
 }
 
