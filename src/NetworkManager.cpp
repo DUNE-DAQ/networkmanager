@@ -160,7 +160,10 @@ void
 NetworkManager::clear_callback(std::string const& connection_or_topic)
 {
   TLOG_DEBUG(5) << "Setting callback on " << connection_or_topic << " to null";
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
   register_callback(connection_or_topic, nullptr);
+#pragma GCC diagnostic pop
 }
 
 void
