@@ -52,22 +52,23 @@ public:
   // Receive via callback
   void start_listening(std::string const& connection_name);
   void stop_listening(std::string const& connection_name);
-  [[deprecated("Use IOManager.get_receiver instead")]]
-  void register_callback(std::string const& connection_or_topic, std::function<void(ipm::Receiver::Response)> callback);
+  [[deprecated("Use IOManager.get_receiver instead")]] void register_callback(
+    std::string const& connection_or_topic,
+    std::function<void(ipm::Receiver::Response)> callback);
   void clear_callback(std::string const& connection_or_topic);
   void subscribe(std::string const& topic);
   void unsubscribe(std::string const& topic);
 
   // Direct Send/Receive
   void start_publisher(std::string const& connection_name);
-  [[deprecated("Use IOManager.get_sender instead")]]
-  void send_to(std::string const& connection_name,
-               const void* buffer,
-               size_t size,
-               ipm::Sender::duration_t timeout,
-               std::string const& topic = "");
-  [[deprecated("Use IOManager.get_receiver instead")]]
-  ipm::Receiver::Response receive_from(std::string const& connection_or_topic, ipm::Receiver::duration_t timeout);
+  [[deprecated("Use IOManager.get_sender instead")]] void send_to(std::string const& connection_name,
+                                                                  const void* buffer,
+                                                                  size_t size,
+                                                                  ipm::Sender::duration_t timeout,
+                                                                  std::string const& topic = "");
+  [[deprecated("Use IOManager.get_receiver instead")]] ipm::Receiver::Response receive_from(
+    std::string const& connection_or_topic,
+    ipm::Receiver::duration_t timeout);
 
   std::string get_connection_string(std::string const& connection_name) const;
   std::vector<std::string> get_connection_strings(std::string const& topic) const;
