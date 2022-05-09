@@ -32,21 +32,28 @@ NetworkManager::get()
 }
 
 void
-NetworkManager::gather_stats(opmonlib::InfoCollector& ci, int level)
+NetworkManager::gather_stats(opmonlib::InfoCollector& ci, int /*level*/)
 {
 
-  for( auto & sender : m_sender_plugins ) {
-    opmonlib::InfoCollector tmp_ic;
-    sender.second -> get_info( tmp_ic, level );
-    ci.add( sender.first, tmp_ic );
+  std::map<std::string, connectioninfo::Info> total;
+
+  for (auto& sent : m_sent_data) {
+    auto& info = total[sent.first];
+    info.sent_bytes = sent.second.first.exchange(0);
+    info.sent_messages = sent.second.second.exchange(0);
   }
 
-  for( auto & receiver : m_receiver_plugins ) {
-    opmonlib::InfoCollector tmp_ic;
-    receiver.second -> get_info( tmp_ic, level );
-    ci.add( receiver.first, tmp_ic );
+  for (auto& received : m_received_data) {
+    auto& info = total[received.first];
+    info.received_bytes = received.second.first.exchange(0);
+    info.received_messages = received.second.second.exchange(0);
   }
-  
+
+  for (auto& info : total) {
+    opmonlib::InfoCollector tmp_ic;
+    tmp_ic.add(info.second);
+    ci.add(info.first, tmp_ic);
+  }
 }
 
 void
@@ -100,6 +107,8 @@ NetworkManager::reset()
   m_topic_map.clear();
   m_connection_map.clear();
   m_connection_mutexes.clear();
+  m_sent_data.clear();
+  m_received_data.clear();
 }
 
 void
@@ -243,6 +252,9 @@ NetworkManager::send_to(std::string const& connection_name,
     sender_ptr = m_sender_plugins[connection_name];
   }
   sender_ptr->send(buffer, size, timeout, topic);
+  auto& data = m_sent_data[connection_name];
+  data.first += size;
+  ++data.second;
 }
 
 ipm::Receiver::Response
@@ -267,6 +279,10 @@ NetworkManager::receive_from(std::string const& connection_or_topic, ipm::Receiv
     receiver_ptr = m_receiver_plugins[connection_or_topic];
   }
   auto res = receiver_ptr->receive(timeout);
+
+  auto& data = m_received_data[connection_or_topic];
+  data.first += res.data.size();
+  ++data.second;
 
   TLOG_DEBUG(19) << "END";
   return res;
