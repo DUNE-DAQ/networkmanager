@@ -16,6 +16,7 @@
 
 #include "ipm/Receiver.hpp"
 #include "ipm/Sender.hpp"
+#include "ipm/Subscriber.hpp"
 #include "opmonlib/InfoCollector.hpp"
 
 #include <atomic>
@@ -51,19 +52,23 @@ public:
   // Receive via callback
   void start_listening(std::string const& connection_name);
   void stop_listening(std::string const& connection_name);
-  void register_callback(std::string const& connection_or_topic, std::function<void(ipm::Receiver::Response)> callback);
+  [[deprecated("Use IOManager.get_receiver instead")]] void register_callback(
+    std::string const& connection_or_topic,
+    std::function<void(ipm::Receiver::Response)> callback);
   void clear_callback(std::string const& connection_or_topic);
   void subscribe(std::string const& topic);
   void unsubscribe(std::string const& topic);
 
   // Direct Send/Receive
   void start_publisher(std::string const& connection_name);
-  void send_to(std::string const& connection_name,
-               const void* buffer,
-               size_t size,
-               ipm::Sender::duration_t timeout,
-               std::string const& topic = "");
-  ipm::Receiver::Response receive_from(std::string const& connection_or_topic, ipm::Receiver::duration_t timeout);
+  [[deprecated("Use IOManager.get_sender instead")]] void send_to(std::string const& connection_name,
+                                                                  const void* buffer,
+                                                                  size_t size,
+                                                                  ipm::Sender::duration_t timeout,
+                                                                  std::string const& topic = "");
+  [[deprecated("Use IOManager.get_receiver instead")]] ipm::Receiver::Response receive_from(
+    std::string const& connection_or_topic,
+    ipm::Receiver::duration_t timeout);
 
   std::string get_connection_string(std::string const& connection_name) const;
   std::vector<std::string> get_connection_strings(std::string const& topic) const;
@@ -75,6 +80,10 @@ public:
 
   bool is_connection_open(std::string const& connection_name,
                           ConnectionDirection direction = ConnectionDirection::Recv) const;
+
+  std::shared_ptr<ipm::Receiver> get_receiver(std::string const& connection_or_topic);
+  std::shared_ptr<ipm::Sender> get_sender(std::string const& connection_name);
+  std::shared_ptr<ipm::Subscriber> get_subscriber(std::string const& topic);
 
 private:
   static std::unique_ptr<NetworkManager> s_instance;
@@ -95,11 +104,6 @@ private:
   std::unordered_map<std::string, std::shared_ptr<ipm::Receiver>> m_receiver_plugins;
   std::unordered_map<std::string, std::shared_ptr<ipm::Sender>> m_sender_plugins;
   std::unordered_map<std::string, Listener> m_registered_listeners;
-
-  using info_type = std::pair<std::atomic<size_t>, std::atomic<size_t>>;
-  // the first element is for the bytes, the second for the number of messages
-  std::unordered_map<std::string, info_type> m_received_data;
-  std::unordered_map<std::string, info_type> m_sent_data;
 
   std::unique_lock<std::mutex> get_connection_lock(std::string const& connection_name) const;
   mutable std::unordered_map<std::string, std::mutex> m_connection_mutexes;

@@ -11,7 +11,6 @@
 #include "networkmanager/connectioninfo/InfoNljs.hpp"
 
 #include "ipm/PluginInfo.hpp"
-#include "ipm/Subscriber.hpp"
 #include "logging/Logging.hpp"
 
 #include <map>
@@ -33,28 +32,21 @@ NetworkManager::get()
 }
 
 void
-NetworkManager::gather_stats(opmonlib::InfoCollector& ci, int /*level*/)
+NetworkManager::gather_stats(opmonlib::InfoCollector& ci, int level)
 {
 
-  std::map<std::string, connectioninfo::Info> total;
-
-  for (auto& sent : m_sent_data) {
-    auto& info = total[sent.first];
-    info.sent_bytes = sent.second.first.exchange(0);
-    info.sent_messages = sent.second.second.exchange(0);
-  }
-
-  for (auto& received : m_received_data) {
-    auto& info = total[received.first];
-    info.received_bytes = received.second.first.exchange(0);
-    info.received_messages = received.second.second.exchange(0);
-  }
-
-  for (auto& info : total) {
+  for( auto & sender : m_sender_plugins ) {
     opmonlib::InfoCollector tmp_ic;
-    tmp_ic.add(info.second);
-    ci.add(info.first, tmp_ic);
+    sender.second -> get_info( tmp_ic, level );
+    ci.add( sender.first, tmp_ic );
   }
+
+  for( auto & receiver : m_receiver_plugins ) {
+    opmonlib::InfoCollector tmp_ic;
+    receiver.second -> get_info( tmp_ic, level );
+    ci.add( receiver.first, tmp_ic );
+  }
+  
 }
 
 void
@@ -108,8 +100,6 @@ NetworkManager::reset()
   m_topic_map.clear();
   m_connection_map.clear();
   m_connection_mutexes.clear();
-  m_sent_data.clear();
-  m_received_data.clear();
 }
 
 void
@@ -161,7 +151,10 @@ void
 NetworkManager::clear_callback(std::string const& connection_or_topic)
 {
   TLOG_DEBUG(5) << "Setting callback on " << connection_or_topic << " to null";
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
   register_callback(connection_or_topic, nullptr);
+#pragma GCC diagnostic pop
 }
 
 void
@@ -250,9 +243,6 @@ NetworkManager::send_to(std::string const& connection_name,
     sender_ptr = m_sender_plugins[connection_name];
   }
   sender_ptr->send(buffer, size, timeout, topic);
-  auto& data = m_sent_data[connection_name];
-  data.first += size;
-  ++data.second;
 }
 
 ipm::Receiver::Response
@@ -277,10 +267,6 @@ NetworkManager::receive_from(std::string const& connection_or_topic, ipm::Receiv
     receiver_ptr = m_receiver_plugins[connection_or_topic];
   }
   auto res = receiver_ptr->receive(timeout);
-
-  auto& data = m_received_data[connection_or_topic];
-  data.first += res.data.size();
-  ++data.second;
 
   TLOG_DEBUG(19) << "END";
   return res;
@@ -379,6 +365,72 @@ NetworkManager::is_connection_open(std::string const& connection_name,
   }
 
   return false;
+}
+
+std::shared_ptr<ipm::Receiver>
+NetworkManager::get_receiver(std::string const& connection_or_topic)
+{
+  if (!m_connection_map.count(connection_or_topic) && !m_topic_map.count(connection_or_topic)) {
+    throw ConnectionNotFound(ERS_HERE, connection_or_topic);
+  }
+
+  if (!is_connection_open(connection_or_topic, ConnectionDirection::Recv)) {
+    TLOG_DEBUG(9) << "Creating receiver for connection or topic " << connection_or_topic;
+    create_receiver(connection_or_topic);
+  }
+
+  std::shared_ptr<ipm::Receiver> receiver_ptr;
+  {
+    std::lock_guard<std::mutex> lk(m_receiver_plugin_map_mutex);
+    receiver_ptr = m_receiver_plugins[connection_or_topic];
+  }
+
+  return receiver_ptr;
+}
+
+std::shared_ptr<ipm::Sender>
+NetworkManager::get_sender(std::string const& connection_name)
+{
+  TLOG_DEBUG(10) << "Checking connection map";
+  if (!m_connection_map.count(connection_name)) {
+    throw ConnectionNotFound(ERS_HERE, connection_name);
+  }
+
+  TLOG_DEBUG(10) << "Checking sender plugins";
+  if (!is_connection_open(connection_name, ConnectionDirection::Send)) {
+    create_sender(connection_name);
+  }
+
+  TLOG_DEBUG(10) << "Sending message";
+  std::shared_ptr<ipm::Sender> sender_ptr;
+  {
+    std::lock_guard<std::mutex> lk(m_sender_plugin_map_mutex);
+    sender_ptr = m_sender_plugins[connection_name];
+  }
+
+  return sender_ptr;
+}
+
+std::shared_ptr<ipm::Subscriber>
+NetworkManager::get_subscriber(std::string const& topic)
+{
+  TLOG_DEBUG(9) << "START";
+
+  if (!m_topic_map.count(topic)) {
+    throw ConnectionNotFound(ERS_HERE, topic);
+  }
+
+  if (!is_connection_open(topic, ConnectionDirection::Recv)) {
+    TLOG_DEBUG(9) << "Creating receiver for topic " << topic;
+    create_receiver(topic);
+  }
+
+  std::shared_ptr<ipm::Subscriber> subscriber_ptr;
+  {
+    std::lock_guard<std::mutex> lk(m_receiver_plugin_map_mutex);
+    subscriber_ptr = std::dynamic_pointer_cast<ipm::Subscriber>(m_receiver_plugins[topic]);
+  }
+  return subscriber_ptr;
 }
 
 void

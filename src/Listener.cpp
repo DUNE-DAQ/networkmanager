@@ -95,7 +95,10 @@ Listener::listener_thread_loop()
   bool first = true;
   do {
     try {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
       auto response = NetworkManager::get().receive_from(m_connection_name, ipm::Receiver::s_no_block);
+#pragma GCC diagnostic pop
 
       TLOG_DEBUG(25) << "Received " << response.data.size() << " bytes. Dispatching to callback.";
       {

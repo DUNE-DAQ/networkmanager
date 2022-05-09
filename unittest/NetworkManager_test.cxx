@@ -18,6 +18,9 @@
 #include <string>
 #include <vector>
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+
 using namespace dunedaq::networkmanager;
 
 BOOST_AUTO_TEST_SUITE(NetworkManager_test)
@@ -624,3 +627,5 @@ BOOST_AUTO_TEST_CASE(ManyThreadsSendingAndReceiving)
 }
 
 BOOST_AUTO_TEST_SUITE_END()
+
+#pragma GCC diagnostic pop
